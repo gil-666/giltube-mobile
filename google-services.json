@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "149577279766",
+    "project_id": "giltube-app",
+    "storage_bucket": "giltube-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:149577279766:android:47ee84cbe0fac02f5d0837",
+        "android_client_info": {
+          "package_name": "com.gilservers.giltube"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANLivXxOxGYwY_16mdPhkGuLOp_QeuA9Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

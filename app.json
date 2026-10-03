@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "GilTube",
+    "slug": "giltube",
+    "version": "0.9.24",
+    "scheme": "giltube",
+    "icon": "./assets/images/giltube-icon-safe.png",
+    "orientation": "default",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.gilservers.giltube",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "GilTube uses your camera to broadcast live video.",
+        "NSMicrophoneUsageDescription": "GilTube uses your microphone to broadcast live audio."
+      }
+    },
+    "android": {
+      "package": "com.gilservers.giltube",
+      "versionCode": 38,
+      "softwareKeyboardLayoutMode": "resize",
+      "googleServicesFile": "./google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "http", "host": "giltube.gilservers.com" },
+            { "scheme": "https", "host": "giltube.gilservers.com" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/giltube-icon-safe.png",
+        "backgroundColor": "#FF0000"
+      },
+      "predictiveBackGestureEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "@config-plugins/react-native-webrtc",
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
+      ],
+      ["expo-notifications", { "icon": "./assets/images/giltube-icon-safe.png", "color": "#ef4444", "defaultChannel": "giltube" }]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

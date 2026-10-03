@@ -1,0 +1,13 @@
+diff --git a/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt b/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt
+index 52bdcd8..3f830be 100644
+--- a/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt
++++ b/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt
+@@ -16,6 +16,8 @@ object SubtitleUtils {
+     playerView.subtitleView?.apply {
+       setApplyEmbeddedStyles(false)
+       setApplyEmbeddedFontSizes(false)
++      // Keep captions clear of the seek bar, gesture area, and display edge.
++      setBottomPaddingFraction(0.14f)
+ 
+       // Apply system accessibility caption style but with reasonable base font size
+       val captioningManager = context.getSystemService(Context.CAPTIONING_SERVICE) as? CaptioningManager
