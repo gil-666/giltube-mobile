@@ -35,6 +35,8 @@ import type {
   PublicWatchParty,
   WatchPartySnapshot,
   WatchProgress,
+  PlaybackIntro,
+  SeriesEpisode,
 } from '@/types/api';
 
 export type MobileImage = { uri: string; name: string; mimeType?: string | null };
@@ -103,6 +105,8 @@ export const giltubeAPI = {
   series: () => apiRequest<SeriesCatalog>('/series'),
   seriesDetail: (id: string) => apiRequest<SeriesDetail>(`/series/${encodeURIComponent(id)}`),
   seriesContext: (videoID: string) => apiRequest<SeriesContext>(`/series-episodes/${encodeURIComponent(videoID)}`),
+  playbackIntro: (videoID: string) =>
+    apiRequest<PlaybackIntro>(`/playback-intro?video_id=${encodeURIComponent(videoID)}`),
   seriesTrailerContext: (videoID: string) => apiRequest<{ series: Series }>(`/series-trailers/${encodeURIComponent(videoID)}`),
   channelAnalytics: (channelID: string) => apiRequest<ChannelAnalytics>(`/channels/${encodeURIComponent(channelID)}/analytics`),
   prepareDownload: (id: string, quality = 'best') =>
@@ -156,6 +160,8 @@ export const giltubeAPI = {
     }),
   watchProgressMap: (videoIDs: string[]) =>
     apiRequest<{ progress: Record<string, WatchProgress> }>(`/watch-progress/videos?ids=${encodeURIComponent([...new Set(videoIDs)].slice(0, 100).join(','))}`),
+  seriesProgress: (seriesID: string) =>
+    apiRequest<{ progress: WatchProgress | null; episode?: SeriesEpisode }>(`/series/${encodeURIComponent(seriesID)}/progress`),
   recentWatchProgress: (limit = 12) =>
     apiRequest<{ items: ContinueWatchingItem[] }>(`/watch-progress/recent?limit=${limit}`),
   channel: async (channelID: string) => {

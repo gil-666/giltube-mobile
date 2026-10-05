@@ -4,7 +4,7 @@ import { router, usePathname } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -16,11 +16,27 @@ import { useDownloads } from '@/downloads/DownloadProvider';
 import { useI18n } from '@/i18n';
 import { colors, radii } from '@/theme/tokens';
 import type { LiveStream, Video, WatchPartyEvent, WatchPartySnapshot } from '@/types/api';
-import { loadHLSQualities, type QualityOption } from '@/utils/hls';
+import { useAppSettings } from '@/settings/AppSettingsProvider';
+import { isLocalHLSManifest, loadHLSQualities, pinnedQualityManifest, probeHDRMaster, type QualityOption } from '@/utils/hls';
 import { resolveMediaURL } from '@/utils/media';
+import { canPlayHDR, deviceSupportsHDR } from '../../modules/giltube-hdr';
 import { subscribeToWatchParty } from '@/watch-parties/events';
 
 type PlayerMode = 'hidden' | 'expanded' | 'minimized';
+
+// available: this title has an HDR ladder this device can present.
+// playing: the HDR ladder is the loaded source.
+export interface HDRState { available: boolean; playing: boolean }
+const noHDR: HDRState = { available: false, playing: false };
+
+// Picks master.m3u8 or its HDR sibling. Only HDR-capable devices probe, so
+// everyone else starts playback without the extra request.
+async function resolvePlaybackSource(masterURI: string, hdrEnabled: boolean): Promise<{ uri: string; hdrURI: string; hdr: HDRState }> {
+  if (masterURI.startsWith('file:') || !deviceSupportsHDR()) return { uri: masterURI, hdrURI: '', hdr: noHDR };
+  const probe = await probeHDRMaster(masterURI);
+  if (!probe || !canPlayHDR(probe.videoRange)) return { uri: masterURI, hdrURI: '', hdr: noHDR };
+  return { uri: hdrEnabled ? probe.url : masterURI, hdrURI: probe.url, hdr: { available: true, playing: hdrEnabled } };
+}
 
 interface PlayerContextValue {
   player: ReturnType<typeof useVideoPlayer>;
@@ -30,9 +46,15 @@ interface PlayerContextValue {
   quality: string;
   liveQualityOptions: QualityOption[];
   isLoading: boolean;
+  // The master playlist actually loaded (master-hdr.m3u8 while HDR plays).
+  playbackMasterURL: string;
+  hdr: HDRState;
+  setHDREnabled: (enabled: boolean) => Promise<void>;
   watchParty: WatchPartySnapshot | null;
   watchPartyEvent: { event: WatchPartyEvent; nonce: number } | null;
-  play: (video: Video, sourceUri?: string) => Promise<void>;
+  // shouldAutoplay is evaluated once the source has loaded, so a caller (the
+  // playback intro) can hold the video paused while it buffers.
+  play: (video: Video, sourceUri?: string, options?: { shouldAutoplay?: () => boolean }) => Promise<void>;
   playLive: (stream: LiveStream) => Promise<void>;
   switchQuality: (sourceUri: string | null, label: string) => Promise<void>;
   joinWatchParty: (partyID: string) => Promise<WatchPartySnapshot>;
@@ -61,12 +83,19 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
   const { account, status: authStatus } = useAuth();
   const { activeChannelID } = useActiveChannel();
   const { getDownload } = useDownloads();
+  const { settings, update: updateSettings } = useAppSettings();
   const [video, setVideo] = useState<Video | null>(null);
   const [liveStream, setLiveStream] = useState<LiveStream | null>(null);
   const [mode, setMode] = useState<PlayerMode>('hidden');
   const [quality, setQuality] = useState('Auto');
   const [liveQualityOptions, setLiveQualityOptions] = useState<QualityOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [playbackMasterURL, setPlaybackMasterURL] = useState('');
+  const [hdr, setHDR] = useState<HDRState>(noHDR);
+  const hdrRef = useRef<HDRState>(noHDR);
+  const sdrMasterRef = useRef('');
+  const hdrMasterRef = useRef('');
+  const hdrEnabledRef = useRef(settings.hdrEnabled);
   const [watchParty, setWatchParty] = useState<WatchPartySnapshot | null>(null);
   const [watchPartyEvent, setWatchPartyEvent] = useState<{ event: WatchPartyEvent; nonce: number } | null>(null);
   const [toast, setToast] = useState<{ message: string; nonce: number } | null>(null);
@@ -103,6 +132,8 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
   const currentLiveVideoTrackRef = useRef(player.videoTrack);
 
   useEffect(() => { videoRef.current = video; }, [video]);
+  useEffect(() => { hdrEnabledRef.current = settings.hdrEnabled; }, [settings.hdrEnabled]);
+  const applyHDR = useCallback((next: HDRState) => { hdrRef.current = next; setHDR(next); }, []);
   useEffect(() => { modeRef.current = mode; }, [mode]);
   useEffect(() => { watchPartyRef.current = watchParty; }, [watchParty]);
   useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
@@ -157,13 +188,17 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     liveQualityLockTimerRef.current = setTimeout(lockSelectedTrack, 6_000);
   }, [player, replacePlayerSource]);
 
-  const loadVideo = useCallback(async (nextVideo: Video, sourceUri: string | undefined, nextMode: PlayerMode, autoplay: boolean) => {
+  const loadVideo = useCallback(async (nextVideo: Video, sourceUri: string | undefined, nextMode: PlayerMode, autoplay: boolean | (() => boolean)) => {
     const operation = ++operationRef.current;
     const offline = getDownload(nextVideo.id);
-    const uri = sourceUri || offline?.fileUri || resolveMediaURL(nextVideo.hls_path);
-    if (!uri) throw new Error('This video does not have a playable source.');
+    const masterURI = sourceUri || offline?.fileUri || resolveMediaURL(nextVideo.hls_path);
+    if (!masterURI) throw new Error('This video does not have a playable source.');
 
-    sourceRef.current = uri;
+    sourceRef.current = masterURI;
+    sdrMasterRef.current = masterURI;
+    hdrMasterRef.current = '';
+    applyHDR(noHDR);
+    setPlaybackMasterURL(masterURI);
 	if (liveQualityLockTimerRef.current) clearTimeout(liveQualityLockTimerRef.current);
 	liveMasterSourceRef.current = '';
 	setLiveQualityOptions([]);
@@ -182,6 +217,13 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
       prioritizeTimeOverSizeThreshold: true,
       waitsToMinimizeStalling: true,
     };
+    const resolved = await resolvePlaybackSource(masterURI, hdrEnabledRef.current);
+    if (operation !== operationRef.current) return;
+    const uri = resolved.uri;
+    sourceRef.current = uri;
+    hdrMasterRef.current = resolved.hdrURI;
+    applyHDR(resolved.hdr);
+    setPlaybackMasterURL(uri);
     try {
       await replacePlayerSource({
         uri,
@@ -198,12 +240,13 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     }
     if (operation !== operationRef.current) { player.pause(); return; }
     setIsLoading(false);
-    if (autoplay) player.play(); else player.pause();
-  }, [getDownload, player, replacePlayerSource]);
+    const shouldPlay = typeof autoplay === 'function' ? autoplay() : autoplay;
+    if (shouldPlay) player.play(); else player.pause();
+  }, [applyHDR, getDownload, player, replacePlayerSource]);
 
-  const play = useCallback(async (nextVideo: Video, sourceUri?: string) => {
+  const play = useCallback(async (nextVideo: Video, sourceUri?: string, options?: { shouldAutoplay?: () => boolean }) => {
     if (watchPartyRef.current) throw new Error('Leave your active watch party before playing another video.');
-    await loadVideo(nextVideo, sourceUri, 'expanded', true);
+    await loadVideo(nextVideo, sourceUri, 'expanded', options?.shouldAutoplay ?? true);
   }, [loadVideo]);
 
   const playLive = useCallback(async (stream: LiveStream) => {
@@ -212,6 +255,10 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     if (!uri) throw new Error('This live stream does not have a playable source.');
     const operation = ++operationRef.current;
     sourceRef.current = uri;
+    sdrMasterRef.current = '';
+    hdrMasterRef.current = '';
+    applyHDR(noHDR);
+    setPlaybackMasterURL(uri);
 	liveMasterSourceRef.current = uri;
 	if (liveQualityLockTimerRef.current) clearTimeout(liveQualityLockTimerRef.current);
 	setLiveQualityOptions([]);
@@ -251,7 +298,7 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
 	if (operation !== operationRef.current) return;
 	setLiveQualityOptions(options);
 	scheduleLiveQualityLock(operation, stream, options);
-  }, [player, replacePlayerSource, scheduleLiveQualityLock]);
+  }, [applyHDR, player, replacePlayerSource, scheduleLiveQualityLock]);
 
   const switchQuality = useCallback(async (sourceUri: string | null, label: string) => {
 	if (liveStream) {
@@ -280,14 +327,20 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
 	  return;
 	}
 	if (!video) return;
-    const uri = sourceUri || sourceRef.current;
-    if (!uri) return;
+    const masterURI = sourceRef.current;
+    if (!sourceUri && !masterURI) return;
     const operation = ++operationRef.current;
     setIsLoading(true);
     const position = player.currentTime;
     const wasPlaying = player.playing;
     try {
-      await replacePlayerSource({ uri, contentType: uri.startsWith('file:') ? 'progressive' : 'hls', metadata: { title: video.title, artist: video.channel?.name || 'GilTube', artwork: resolveMediaURL(video.thumbnail_url) } });
+      // A bare variant playlist has no audio renditions; on Android pin the
+      // quality through a one-variant copy of the master instead.
+      const uri = sourceUri && Platform.OS === 'android' && masterURI.startsWith('http')
+        ? await pinnedQualityManifest(masterURI, sourceUri)
+        : sourceUri || masterURI;
+      if (operation !== operationRef.current) return;
+      await replacePlayerSource({ uri, contentType: uri.startsWith('file:') && !isLocalHLSManifest(uri) ? 'progressive' : 'hls', metadata: { title: video.title, artist: video.channel?.name || 'GilTube', artwork: resolveMediaURL(video.thumbnail_url) } });
     } catch (error) {
       if (operation === operationRef.current) setIsLoading(false);
       throw error;
@@ -298,6 +351,49 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     setIsLoading(false);
     if (wasPlaying) player.play();
   }, [liveStream, player, replacePlayerSource, scheduleLiveQualityLock, video]);
+
+  // Swaps between master.m3u8 and master-hdr.m3u8 at the current position.
+  const swapHDRSource = useCallback(async (playHDR: boolean) => {
+    const current = videoRef.current;
+    const uri = playHDR ? hdrMasterRef.current : sdrMasterRef.current;
+    if (!current || !uri) return;
+    const operation = ++operationRef.current;
+    const position = player.currentTime;
+    const wasPlaying = player.playing;
+    setIsLoading(true);
+    try {
+      await replacePlayerSource({ uri, contentType: 'hls', metadata: { title: current.title, artist: current.channel?.name || 'GilTube', artwork: resolveMediaURL(current.thumbnail_url) } });
+    } catch (error) {
+      if (operation === operationRef.current) setIsLoading(false);
+      throw error;
+    }
+    if (operation !== operationRef.current) return;
+    sourceRef.current = uri;
+    setPlaybackMasterURL(uri);
+    setQuality('Auto');
+    applyHDR({ available: !!hdrMasterRef.current, playing: playHDR });
+    player.currentTime = position;
+    setIsLoading(false);
+    if (wasPlaying) player.play();
+  }, [applyHDR, player, replacePlayerSource]);
+
+  const setHDREnabled = useCallback(async (enabled: boolean) => {
+    hdrEnabledRef.current = enabled;
+    await updateSettings({ hdrEnabled: enabled });
+    if (!hdrRef.current.available || hdrRef.current.playing === enabled) return;
+    await swapHDRSource(enabled);
+  }, [swapHDRSource, updateSettings]);
+
+  // A decoder that rejects the HEVC HDR ladder must not strand playback:
+  // drop back to SDR at the same position.
+  useEffect(() => {
+    const subscription = player.addListener('statusChange', ({ status }) => {
+      if (status !== 'error' || !hdrRef.current.playing) return;
+      hdrMasterRef.current = '';
+      void swapHDRSource(false).catch(() => undefined);
+    });
+    return () => subscription.remove();
+  }, [player, swapHDRSource]);
 
   const minimize = useCallback(() => setMode((current) => current === 'hidden' ? current : 'minimized'), []);
   const expand = useCallback(() => setMode((current) => current === 'hidden' ? current : 'expanded'), []);
@@ -321,9 +417,13 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     setWatchPartyEvent(null);
     sourceRef.current = '';
 	liveMasterSourceRef.current = '';
+    sdrMasterRef.current = '';
+    hdrMasterRef.current = '';
+    applyHDR(noHDR);
+    setPlaybackMasterURL('');
     applyingRemoteRef.current = false;
     void replacePlayerSource(null).catch(() => undefined);
-  }, [player, replacePlayerSource]);
+  }, [applyHDR, player, replacePlayerSource]);
 
   const showToast = useCallback((message: string) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -523,7 +623,13 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
   useEffect(() => {
     const expandedPath = video ? `/video/${video.id}` : liveStream ? `/live/${liveStream.channel_id}` : '';
     if ((!video && !liveStream) || mode !== 'expanded' || pathname === expandedPath) return;
-    const timer = setTimeout(() => setMode('minimized'), 0);
+    const timer = setTimeout(() => {
+      // Re-check with live values: going back to an earlier watch screen loads
+      // its video in the same tick, and must not be minimized by this stale run.
+      const currentVideo = videoRef.current;
+      const currentPath = currentVideo ? `/video/${currentVideo.id}` : expandedPath;
+      if (modeRef.current === 'expanded' && pathnameRef.current !== currentPath) setMode('minimized');
+    }, 0);
     return () => clearTimeout(timer);
   }, [liveStream, mode, pathname, video, watchParty]);
 
@@ -543,8 +649,8 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
   }, [mode, player]);
 
   const value = useMemo(
-    () => ({ player, video, liveStream, mode, quality, liveQualityOptions, isLoading, watchParty, watchPartyEvent, play, playLive, switchQuality, joinWatchParty, refreshWatchParty, sendWatchPartyPlayback, leaveWatchParty, minimize, expand, dismiss }),
-    [player, video, liveStream, mode, quality, liveQualityOptions, isLoading, watchParty, watchPartyEvent, play, playLive, switchQuality, joinWatchParty, refreshWatchParty, sendWatchPartyPlayback, leaveWatchParty, minimize, expand, dismiss],
+    () => ({ player, video, liveStream, mode, quality, liveQualityOptions, isLoading, playbackMasterURL, hdr, setHDREnabled, watchParty, watchPartyEvent, play, playLive, switchQuality, joinWatchParty, refreshWatchParty, sendWatchPartyPlayback, leaveWatchParty, minimize, expand, dismiss }),
+    [player, video, liveStream, mode, quality, liveQualityOptions, isLoading, playbackMasterURL, hdr, setHDREnabled, watchParty, watchPartyEvent, play, playLive, switchQuality, joinWatchParty, refreshWatchParty, sendWatchPartyPlayback, leaveWatchParty, minimize, expand, dismiss],
   );
 
   return (
@@ -575,7 +681,7 @@ function MiniPlayer() {
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
   const { account } = useAuth();
-  const { player, video, liveStream, mode, watchParty, expand, dismiss, sendWatchPartyPlayback, leaveWatchParty } = usePlayer();
+  const { player, video, liveStream, mode, watchParty, hdr, expand, dismiss, sendWatchPartyPlayback, leaveWatchParty } = usePlayer();
   const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
   const media = video || liveStream;
   if (!media || mode !== 'minimized') return null;
@@ -608,7 +714,8 @@ function MiniPlayer() {
       style={[styles.mini, { bottom: Math.max(insets.bottom, 8) + 66 }]}
     >
       <PressableScale onPress={open} style={styles.preview}>
-        <VideoView player={player} style={StyleSheet.absoluteFill} nativeControls={false} allowsPictureInPicture startsPictureInPictureAutomatically contentFit="cover" surfaceType="textureView" />
+        {/* Android only presents HDR on a SurfaceView; TextureView washes it out. */}
+        <VideoView key={hdr.playing ? 'hdr' : 'sdr'} player={player} style={StyleSheet.absoluteFill} nativeControls={false} allowsPictureInPicture startsPictureInPictureAutomatically contentFit="cover" surfaceType={hdr.playing ? 'surfaceView' : 'textureView'} />
       </PressableScale>
       <PressableScale onPress={open} style={styles.copy}>
         {!!watchParty && <View style={styles.partyLabel}><View style={styles.partyDot} /><Text style={styles.partyLabelText}>{t('WATCH PARTY')}</Text></View>}

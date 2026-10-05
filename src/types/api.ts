@@ -208,6 +208,14 @@ export interface WatchProgress {
   updated_at: string;
 }
 
+export interface PlaybackIntro {
+  enabled: boolean;
+  allow_skip: boolean;
+  url: string;
+  version: string;
+  play?: boolean;
+}
+
 export interface ContinueWatchingItem {
   kind: 'video' | 'movie' | 'series';
   progress: WatchProgress;
@@ -321,6 +329,8 @@ export interface MediaCapabilities {
   max_quality?: string;
   audio_languages?: string[];
   caption_languages?: string[];
+  hdr?: boolean;
+  surround?: boolean;
 }
 
 export interface Movie {

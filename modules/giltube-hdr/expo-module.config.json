@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["GiltubeHdrModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.giltubehdr.GiltubeHdrModule"]
+  }
+}

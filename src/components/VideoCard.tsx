@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { router, usePathname } from 'expo-router';
+import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInRight } from 'react-native-reanimated';
 
@@ -12,12 +12,8 @@ import { resolveMediaURL } from '@/utils/media';
 
 export function VideoCard({ video, index = 0, progress = 0 }: { video: Video; index?: number; progress?: number }) {
   const { t, compactNumber } = useI18n();
-  const pathname = usePathname();
-  const openVideo = () => {
-    const destination = { pathname: '/video/[id]' as const, params: { id: video.id } };
-    if (pathname.startsWith('/video/')) router.replace(destination);
-    else router.push(destination);
-  };
+  // Push (even from a watch screen) so Back returns to the previous video.
+  const openVideo = () => router.push({ pathname: '/video/[id]', params: { id: video.id } });
   return (
     <Animated.View entering={FadeInRight.delay(Math.min(index, 6) * 55).duration(360)}>
       <PressableScale

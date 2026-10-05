@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, AppState, Platform, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,12 +10,14 @@ import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
 import { useAppSettings, type AppSettings } from '@/settings/AppSettingsProvider';
 import { colors, radii } from '@/theme/tokens';
+import { deviceSupportsHDR } from '../modules/giltube-hdr';
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets(); const { status } = useAuth(); const { settings, update, reset } = useAppSettings();
   const { t } = useI18n();
   const [linkApproval, setLinkApproval] = useState<AppLinkApprovalState>('unknown');
-  const toggle = (key: keyof Pick<AppSettings, 'pipEnabled' | 'backgroundPlayback' | 'resumePlayback'>) => void update({ [key]: !settings[key] });
+  const toggle = (key: keyof Pick<AppSettings, 'pipEnabled' | 'backgroundPlayback' | 'resumePlayback' | 'hdrEnabled'>) => void update({ [key]: !settings[key] });
+  const hdrSupported = useMemo(() => deviceSupportsHDR(), []);
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     const refresh = () => void getAppLinkApprovalState().then(setLinkApproval).catch(() => setLinkApproval('unknown'));
@@ -29,6 +31,7 @@ export default function SettingsScreen() {
     <Toggle icon="enter-outline" title={t('Resume where I left off')} subtitle={t('Use synced watch progress when opening a video')} value={settings.resumePlayback} onChange={() => toggle('resumePlayback')} />
     <Toggle icon="albums-outline" title={t('Background playback')} subtitle={t('Keep audio playing when GilTube is in the background')} value={settings.backgroundPlayback} onChange={() => toggle('backgroundPlayback')} />
     <Toggle icon="browsers-outline" title={t('Picture in Picture')} subtitle={t('Float the player when leaving the app')} value={settings.pipEnabled} onChange={() => toggle('pipEnabled')} />
+    {hdrSupported && <Toggle icon="sunny-outline" title={t('HDR video')} subtitle={t('Play HDR titles in high dynamic range on this screen')} value={settings.hdrEnabled} onChange={() => toggle('hdrEnabled')} />}
     <View style={styles.setting}><View style={styles.icon}><Ionicons name="play-forward-outline" color={colors.text} size={21} /></View><View style={styles.copy}><Text style={styles.title}>{t('Double-tap seek')}</Text><Text style={styles.help}>{t('Choose how far double-tap moves')}</Text><View style={styles.chips}>{([5, 10, 15] as const).map((seconds) => <PressableScale key={seconds} onPress={() => void update({ doubleTapSeconds: seconds })} style={[styles.chip, settings.doubleTapSeconds === seconds && styles.chipActive]}><Text style={[styles.chipText, settings.doubleTapSeconds === seconds && styles.chipTextActive]}>{seconds}s</Text></PressableScale>)}</View></View></View>
     <Text style={styles.section}>{t('LANGUAGES & CAPTIONS')}</Text>
     <View style={styles.setting}><View style={styles.icon}><Ionicons name="globe-outline" color={colors.text} size={21} /></View><View style={styles.copy}><Text style={styles.title}>{t('App language')}</Text><View style={styles.chips}>{([['system', 'System default'], ['en-US', 'English'], ['es-MX', 'Spanish (Mexico)']] as const).map(([value, label]) => <PressableScale key={value} onPress={() => void update({ language: value })} style={[styles.languageChip, settings.language === value && styles.chipActive]}><Text style={[styles.chipText, settings.language === value && styles.chipTextActive]}>{t(label)}</Text></PressableScale>)}</View></View></View>
