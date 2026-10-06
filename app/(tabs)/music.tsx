@@ -12,7 +12,6 @@ import { musicAPI } from '@/api/music';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
 import { ArtistAvatar, LosslessBadge, MusicCover } from '@/music/components/Artwork';
-import { ContinueListeningCard } from '@/music/components/ContinueListening';
 import { formatBytes, releaseMeta, trackCountLabel } from '@/music/components/format';
 import { musicKeys, usePlayRelease, useReleaseTilePlayback } from '@/music/components/hooks';
 import { ReleaseTile } from '@/music/components/ReleaseTile';
@@ -65,8 +64,6 @@ export default function MusicHomeScreen() {
       contentContainerStyle={{ paddingBottom: contentInset + 12 }}
       refreshControl={<RefreshControl refreshing={home.isRefetching} onRefresh={() => void home.refetch()} tintColor={colors.accentBright} colors={[colors.accentBright]} />}
     >
-      <ContinueListeningCard style={styles.continue} />
-
       {home.isLoading && <HomeSkeleton />}
       {home.isError && !home.data && <MusicState kind="error" title={t('Couldn’t load music')} body={home.error.message} onRetry={() => void home.refetch()} />}
       {!!home.data && !releases.length && !artists.length && <MusicState kind="empty" title={t('No music yet')} body={t('New releases will show up here.')} />}
@@ -169,7 +166,6 @@ const useStyles = makeStyles(() => ({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 8 },
   logo: { width: 124, height: 37 },
   headerActions: { flexDirection: 'row', gap: 8 },
-  continue: { marginHorizontal: 16, marginTop: 8 },
   hero: { alignItems: 'center', overflow: 'hidden', paddingTop: 26, paddingBottom: 26, paddingHorizontal: 24, marginTop: 8 },
   heroCoverShadow: { borderRadius: radii.lg, shadowColor: colors.black, shadowOpacity: 0.5, shadowRadius: 22, shadowOffset: { width: 0, height: 14 }, elevation: 14 },
   heroKicker: { color: colors.accentBright, fontSize: 11, fontWeight: '900', letterSpacing: 1.8, marginTop: 22 },

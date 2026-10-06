@@ -2,8 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,13 +16,11 @@ import { useMusicPlayer } from '@/music/MusicPlayerProvider';
 import { LyricsView } from '@/music/player/LyricsView';
 import { QueueView } from '@/music/player/QueueView';
 import { SeekBar } from '@/music/player/SeekBar';
-import { musicImage, type MusicFileQuality } from '@/music/quality';
+import { musicImage } from '@/music/quality';
 import { openVideo } from '@/player/navigation';
 import { colors, makeStyles, motion, radii, withAlpha } from '@/theme/tokens';
 
 type View3 = 'player' | 'lyrics' | 'queue';
-
-const QUALITY_LABEL: Record<MusicFileQuality, string> = { master: 'Original', high: '320 kbps', medium: '256 kbps', low: '128 kbps' };
 
 function close() {
   if (router.canGoBack()) router.back();
@@ -34,6 +32,8 @@ export default function MusicPlayerScreen() {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ view?: string }>();
+  const { width } = useWindowDimensions();
+  const pager = useRef<ScrollView>(null);
   const player = useMusicPlayer();
   const { current } = player;
   const hasLyrics = trackHasLyrics(current);
@@ -57,18 +57,32 @@ export default function MusicPlayerScreen() {
   })), [translateY]);
   const motionStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
 
+  const tabs: { key: View3; label: string }[] = useMemo(() => [
+    { key: 'player', label: t('Playing') },
+    ...(hasLyrics ? [{ key: 'lyrics' as const, label: t('Lyrics') }] : []),
+    { key: 'queue', label: t('Queue') },
+  ], [hasLyrics, t]);
+  const pageIndex = Math.max(0, tabs.findIndex((tab) => tab.key === view));
+
+  // Keep the pager on the selected view (taps on the segments, ?view=, or the
+  // Lyrics page disappearing when the next track has none).
+  useEffect(() => {
+    pager.current?.scrollTo({ x: pageIndex * width, animated: true });
+  }, [pageIndex, width]);
+
+  // Swiping between pages selects the view under the finger.
+  const onPageSettled = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const index = Math.round(event.nativeEvent.contentOffset.x / Math.max(1, width));
+    const tab = tabs[Math.min(Math.max(index, 0), tabs.length - 1)];
+    if (tab && tab.key !== view) choose(tab.key);
+  };
+
   // The queue was cleared (or never existed): nothing to show.
   const empty = !current;
   useEffect(() => {
     if (empty) close();
   }, [empty]);
   if (!current) return <View style={styles.screen} />;
-
-  const tabs: { key: View3; label: string }[] = [
-    { key: 'player', label: t('Playing') },
-    ...(hasLyrics ? [{ key: 'lyrics' as const, label: t('Lyrics') }] : []),
-    { key: 'queue', label: t('Queue') },
-  ];
 
   return (
     <Animated.View style={[styles.screen, motionStyle]}>
@@ -97,18 +111,32 @@ export default function MusicPlayerScreen() {
         </View>
       </GestureDetector>
 
-      {view === 'player' && (
-        <GestureDetector gesture={bodySwipe!}>
-          <View style={styles.body}><PlayingView bottomInset={insets.bottom} /></View>
-        </GestureDetector>
-      )}
-      {view === 'lyrics' && (
-        <View style={styles.body}>
-          <LyricsView bottomInset={insets.bottom} />
-          <MiniTransport bottomInset={insets.bottom} />
-        </View>
-      )}
-      {view === 'queue' && <View style={styles.body}><QueueView bottomInset={insets.bottom} /></View>}
+      <ScrollView
+        ref={pager}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        contentOffset={{ x: pageIndex * width, y: 0 }}
+        onMomentumScrollEnd={onPageSettled}
+        style={styles.body}
+      >
+        {tabs.map((tab) => (
+          <View key={tab.key} style={[styles.page, { width }]}>
+            {tab.key === 'player' && (
+              <GestureDetector gesture={bodySwipe!}>
+                <View style={styles.body}><PlayingView bottomInset={insets.bottom} /></View>
+              </GestureDetector>
+            )}
+            {tab.key === 'lyrics' && (
+              <>
+                <LyricsView bottomInset={insets.bottom} />
+                <MiniTransport bottomInset={insets.bottom} />
+              </>
+            )}
+            {tab.key === 'queue' && <QueueView bottomInset={insets.bottom} />}
+          </View>
+        ))}
+      </ScrollView>
     </Animated.View>
   );
 }
@@ -122,7 +150,6 @@ function PlayingView({ bottomInset }: { bottomInset: number }) {
 
   const coverSize = Math.min(window.width - 56, window.height * 0.42, 420);
   const total = duration > 0 ? duration : current.duration_seconds || 0;
-  const qualityLabel = nowPlaying?.offline ? t('Downloaded') : nowPlaying?.lossless ? t('Lossless') : nowPlaying ? t(QUALITY_LABEL[nowPlaying.quality]) : '';
 
   return (
     <View style={[styles.playing, { paddingBottom: bottomInset + 16 }]}>
@@ -143,6 +170,12 @@ function PlayingView({ bottomInset }: { bottomInset: number }) {
           <Pressable onPress={() => router.push(`/music/artists/${current.artist_slug}`)} accessibilityRole="link">
             <Text numberOfLines={1} style={styles.artist}>{current.artist_name}</Text>
           </Pressable>
+          {!!current.official_video_id && (
+            <Pressable onPress={() => openVideo(current.official_video_id!)} style={styles.watchVideo} accessibilityRole="button" hitSlop={6}>
+              <Ionicons name="play-circle" size={16} color={colors.text} />
+              <Text style={styles.watchVideoText}>{t('Watch video')}</Text>
+            </Pressable>
+          )}
         </View>
         <DownloadButton />
       </View>
@@ -172,18 +205,13 @@ function PlayingView({ bottomInset }: { bottomInset: number }) {
         </Pressable>
       </View>
 
+      {/* Only when the lossless master is what's actually playing. */}
       <View style={styles.footer}>
-        {!!qualityLabel && (
-          <View style={[styles.chip, nowPlaying?.lossless && !nowPlaying.offline && styles.chipLossless]}>
-            <Ionicons name={nowPlaying?.offline ? 'arrow-down-circle' : nowPlaying?.lossless ? 'diamond-outline' : 'pulse'} size={12} color={nowPlaying?.lossless ? colors.highlight : colors.textMuted} />
-            <Text style={[styles.chipText, nowPlaying?.lossless && styles.chipTextLossless]}>{qualityLabel}</Text>
+        {!!nowPlaying?.lossless && (
+          <View style={[styles.chip, styles.chipLossless]}>
+            <Ionicons name="diamond-outline" size={12} color={colors.highlight} />
+            <Text style={[styles.chipText, styles.chipTextLossless]}>{t('Lossless')}</Text>
           </View>
-        )}
-        {!!current.official_video_id && (
-          <Pressable onPress={() => openVideo(current.official_video_id!)} style={styles.chip} accessibilityRole="button">
-            <Ionicons name="videocam-outline" size={13} color={colors.text} />
-            <Text style={[styles.chipText, styles.chipTextStrong]}>{t('Watch video')}</Text>
-          </Pressable>
         )}
       </View>
     </View>
@@ -259,6 +287,9 @@ const useStyles = makeStyles(() => ({
   segmentText: { color: colors.textMuted, fontSize: 13, fontWeight: '700' },
   segmentTextActive: { color: colors.text },
   body: { flex: 1 },
+  page: { flex: 1 },
+  watchVideo: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, marginTop: 10, paddingHorizontal: 12, height: 30, borderRadius: radii.pill, backgroundColor: withAlpha(colors.text, 0.1) },
+  watchVideoText: { color: colors.text, fontSize: 13, fontWeight: '700' },
   playing: { flex: 1, paddingHorizontal: 28, justifyContent: 'space-between' },
   coverWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
   coverShadow: {
@@ -291,7 +322,6 @@ const useStyles = makeStyles(() => ({
   chipLossless: { backgroundColor: withAlpha(colors.highlight, 0.14) },
   chipText: { color: colors.textMuted, fontSize: 12, fontWeight: '700' },
   chipTextLossless: { color: colors.highlight },
-  chipTextStrong: { color: colors.text },
   miniTransport: { paddingHorizontal: 24, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, backgroundColor: withAlpha(colors.canvas, 0.92) },
   miniButtons: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 36, marginTop: 2 },
   miniPlay: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.text },

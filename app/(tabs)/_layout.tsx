@@ -58,7 +58,8 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: t('Home'), tabBarIcon: icon('home') }} />
-      <Tabs.Screen name="subscriptions" options={{ title: t('Subs'), tabBarIcon: icon('albums') }} />
+      {/* Off the bar so Create stays centred; opened from the You tab. */}
+      <Tabs.Screen name="subscriptions" options={{ href: null, title: t('Subs') }} />
       <Tabs.Screen name="music" options={{ title: t('Music'), tabBarIcon: icon('musical-notes') }} />
       <Tabs.Screen name="create" listeners={{ tabPress: (event) => { event.preventDefault(); openCreate(); } }} options={{ title: t('Create'), tabBarIcon: CreateIcon, tabBarLabelStyle: styles.createLabel }} />
       <Tabs.Screen name="library" options={{ title: t('Library'), tabBarIcon: icon('play-circle') }} />

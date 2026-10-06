@@ -12,10 +12,8 @@ import { useAuth } from '@/auth/AuthProvider';
 import { PressableScale } from '@/components/PressableScale';
 import { useDownloads } from '@/downloads/DownloadProvider';
 import { useI18n } from '@/i18n';
-import { ContinueListeningCard } from '@/music/components/ContinueListening';
 import { formatBytes, trackCountLabel } from '@/music/components/format';
 import { useMusicDownloads } from '@/music/MusicDownloadsProvider';
-import { useMusicPlayer } from '@/music/MusicPlayerProvider';
 import { useMiniPlayerLayout } from '@/player/miniPlayerLayout';
 import { openVideo } from '@/player/navigation';
 import { PlaylistCreator } from '@/playlists/PlaylistCreator';
@@ -49,17 +47,15 @@ export default function LibraryScreen() {
 function MusicLibrarySection() {
   const styles = useStyles();
   const { t } = useI18n();
-  const { current } = useMusicPlayer();
   const { downloads, totalBytes } = useMusicDownloads();
   return <>
     <View style={styles.playlistHeader}><Text style={styles.sectionTitle}>{t('Music')}</Text><PressableScale onPress={() => router.push('/music')}><Text style={styles.signIn}>{t('Open GilTube Music')}</Text></PressableScale></View>
-    {!!current && <ContinueListeningCard style={styles.musicCard} />}
     {downloads.length > 0 && <PressableScale accessibilityRole="link" onPress={() => router.push('/music/downloads')} style={styles.musicRow}><View style={styles.musicIcon}><Ionicons name="musical-notes" size={21} color={colors.success} /></View><View style={styles.copy}><Text style={styles.title}>{t('Downloaded music')}</Text><Text style={styles.offlineMeta}>{trackCountLabel(downloads.length, t)} · {formatBytes(totalBytes)}</Text></View><Ionicons name="chevron-forward" size={19} color={colors.textDim} /></PressableScale>}
-    {!current && !downloads.length && <PressableScale accessibilityRole="link" onPress={() => router.push('/music')} style={styles.musicRow}><View style={[styles.musicIcon, styles.musicInvite]}><Ionicons name="musical-notes" size={21} color={colors.onAccent} /></View><View style={styles.copy}><Text style={styles.title}>{t('Listen on GilTube Music')}</Text><Text style={styles.meta}>{t('Albums and singles, with offline downloads.')}</Text></View><Ionicons name="chevron-forward" size={19} color={colors.textDim} /></PressableScale>}
+    {!downloads.length && <PressableScale accessibilityRole="link" onPress={() => router.push('/music')} style={styles.musicRow}><View style={[styles.musicIcon, styles.musicInvite]}><Ionicons name="musical-notes" size={21} color={colors.onAccent} /></View><View style={styles.copy}><Text style={styles.title}>{t('Listen on GilTube Music')}</Text><Text style={styles.meta}>{t('Albums and singles, with offline downloads.')}</Text></View><Ionicons name="chevron-forward" size={19} color={colors.textDim} /></PressableScale>}
   </>;
 }
 
 const useStyles = makeStyles(() => ({
-  musicCard: { marginBottom: 10 }, musicRow: { minHeight: 70, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 10 }, musicIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: withAlpha(colors.success, 0.12) }, musicInvite: { backgroundColor: colors.accentBright },
+  musicRow: { minHeight: 70, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 10 }, musicIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: withAlpha(colors.success, 0.12) }, musicInvite: { backgroundColor: colors.accentBright },
   screen: { flex: 1, backgroundColor: colors.screen, paddingHorizontal: 18 }, heading: { color: colors.text, fontSize: 34, fontWeight: '900', letterSpacing: -1.2 }, sectionTitle: { color: colors.text, fontSize: 20, fontWeight: '900', marginTop: 25, marginBottom: 13 }, empty: { minHeight: 90, flexDirection: 'row', alignItems: 'center', borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: 16 }, emptyIcon: { width: 46, height: 46, borderRadius: 16, backgroundColor: withAlpha(colors.accentBright, 0.12), alignItems: 'center', justifyContent: 'center' }, emptyCopy: { flex: 1, marginLeft: 14 }, emptyTitle: { color: colors.text, fontSize: 16, fontWeight: '900' }, emptyBody: { color: colors.textMuted, fontSize: 12, lineHeight: 17, marginTop: 4 }, row: { minHeight: 84, flexDirection: 'row', alignItems: 'center', borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 10 }, openArea: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' }, thumbnail: { width: 126, height: 82, backgroundColor: colors.black }, copy: { flex: 1, minWidth: 0, paddingHorizontal: 12 }, title: { color: colors.text, fontSize: 14, lineHeight: 19, fontWeight: '800' }, offlineMeta: { color: colors.success, fontSize: 11, marginTop: 6 }, meta: { color: colors.textMuted, fontSize: 11, marginTop: 5 }, remove: { width: 46, height: 54, alignItems: 'center', justifyContent: 'center' }, playlistHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, addPlaylist: { width: 38, height: 38, marginTop: 12, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent }, signIn: { color: colors.gilid, fontSize: 13, fontWeight: '800', marginTop: 14 }, playlistEmpty: { color: colors.textMuted, fontSize: 13, paddingVertical: 10 }, playlist: { minHeight: 72, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }, playlistArt: { width: 84, height: 50, borderRadius: radii.md, backgroundColor: colors.surfaceStrong },
 }));
