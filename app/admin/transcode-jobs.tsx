@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useIsFocused } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminLoading, AdminNotice, AdminProgress, AdminScreen, adminStyles, alertError, confirmAction, useIsAdmin } from '@/admin/ui';
 import { listTranscodeJobs, runTranscodeAction, transcodeKeys } from '@/admin/ingest/api';
 import type { TranscodeAction, TranscodeJob } from '@/admin/ingest/types';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 
 const STATUSES = ['all', 'queued', 'running', 'paused', 'failed', 'cancelled', 'completed'] as const;
 type StatusFilter = typeof STATUSES[number];
@@ -27,6 +27,7 @@ function statusTone(status: string) {
 }
 
 export default function TranscodeJobsScreen() {
+  const styles = useStyles();
   const { t } = useI18n();
   const isAdmin = useIsAdmin();
   const focused = useIsFocused();
@@ -67,6 +68,7 @@ export default function TranscodeJobsScreen() {
 }
 
 function JobCard({ job, busyAction, onAction }: { job: TranscodeJob; busyAction?: TranscodeAction; onAction: (kind: TranscodeAction) => void }) {
+  const styles = useStyles();
   const { t, dateTime } = useI18n();
   const progress = safeProgress(job.progress);
   const statusLabel = (STATUS_LABELS as Record<string, string>)[job.status];
@@ -99,11 +101,11 @@ function JobCard({ job, busyAction, onAction }: { job: TranscodeJob; busyAction?
   </AdminCard>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   list: { marginTop: 14 },
   copy: { flex: 1, minWidth: 0 },
   title: { color: colors.text, fontSize: 15, fontWeight: '800', marginBottom: 2 },
   gap: { marginTop: 8 },
   meta: { marginTop: 8, gap: 2 },
-  error: { color: '#fca5a5', fontSize: 12, lineHeight: 17, marginTop: 8 },
-});
+  error: { color: colors.danger, fontSize: 12, lineHeight: 17, marginTop: 8 },
+}));

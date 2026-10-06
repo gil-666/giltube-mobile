@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AdminButton, AdminEmpty, AdminLoading } from '@/admin/ui';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 
 import { musicAPI, musicKeys } from './api';
@@ -17,6 +17,7 @@ import type { AdminMusicVideoOption, LocalMusicFile } from './types';
 
 /** Square artwork (release cover / artist image) with an icon fallback. */
 export function MusicArtwork({ url, size = 46, round, localURI }: { url?: string; size?: number; round?: boolean; localURI?: string }) {
+  const styles = useStyles();
   const source = localURI || (url ? resolveMediaURL(url) : '');
   const shape = { width: size, height: size, borderRadius: round ? size / 2 : radii.sm };
   if (!source) return <View style={[styles.artworkEmpty, shape]}><Ionicons name={round ? 'person-outline' : 'disc-outline'} size={size * 0.42} color={colors.textDim} /></View>;
@@ -27,6 +28,7 @@ export type SelectOption = { value: string; label: string; subtitle?: string };
 
 /** Tap-to-open list picker for long option lists (artists, releases, channels, tracks). */
 export function MusicSelect({ label, value, options, onChange, placeholder, help, disabled, searchable = true }: { label: string; value: string; options: SelectOption[]; onChange: (value: string) => void; placeholder?: string; help?: string; disabled?: boolean; searchable?: boolean }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
@@ -85,6 +87,7 @@ export async function pickAudioFiles(multiple: boolean): Promise<LocalMusicFile[
 
 /** Search GilTube videos (admin list) and pick the official music video. */
 export function MusicVideoPicker({ onSelect, excludeID }: { onSelect: (video: AdminMusicVideoOption) => void; excludeID?: string }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
@@ -111,6 +114,7 @@ export function MusicVideoPicker({ onSelect, excludeID }: { onSelect: (video: Ad
 
 /** The currently linked/selected official video, with a remove action. */
 export function MusicVideoCard({ title, thumbnail, subtitle, onRemove, busy }: { title: string; thumbnail?: string; subtitle?: string; onRemove: () => void; busy?: boolean }) {
+  const styles = useStyles();
   const { t } = useI18n();
   return <View style={styles.videoRow}>
     {thumbnail ? <Image source={{ uri: resolveMediaURL(thumbnail) }} style={styles.videoThumb} contentFit="cover" /> : <View style={styles.videoThumb} />}
@@ -124,13 +128,14 @@ export function MusicVideoCard({ title, thumbnail, subtitle, onRemove, busy }: {
 
 /** Overview tiles (same five counters as the web header). */
 export function MusicStats({ items }: { items: { label: string; value: number; tone?: 'good' | 'warn' }[] }) {
+  const styles = useStyles();
   return <View style={styles.stats}>{items.map((item) => <View key={item.label} style={styles.stat}>
     <Text style={[styles.statValue, item.tone === 'good' && { color: colors.success }, item.tone === 'warn' && { color: colors.warning }]}>{item.value}</Text>
     <Text style={styles.statLabel}>{item.label}</Text>
   </View>)}</View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   artwork: { backgroundColor: colors.surfaceStrong },
   artworkEmpty: { backgroundColor: colors.surfaceStrong, alignItems: 'center', justifyContent: 'center' },
   field: { marginTop: 12 },
@@ -156,4 +161,4 @@ const styles = StyleSheet.create({
   stat: { flexGrow: 1, minWidth: '30%', borderRadius: radii.md, backgroundColor: colors.surface, paddingVertical: 12, paddingHorizontal: 10 },
   statValue: { color: colors.text, fontSize: 18, fontWeight: '900' },
   statLabel: { color: colors.textMuted, fontSize: 10, fontWeight: '700', marginTop: 2 },
-});
+}));

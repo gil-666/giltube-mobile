@@ -38,6 +38,12 @@ Watch together:
 • Start watch parties with synced playback and room chat
 • Invite GilTube members and share party links
 
+Make it yours:
+
+• Pick a GilTube theme or use the ones you create on the web
+• Install themes other people share with a single link
+• Colors, gradients, background images and effects follow your account everywhere
+
 Join the community:
 
 • Like videos and subscribe to channels

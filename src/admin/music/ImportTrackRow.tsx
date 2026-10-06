@@ -4,7 +4,7 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { AdminBadge } from '@/admin/ui';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 
 import type { LocalMusicFile } from './types';
 
@@ -31,6 +31,7 @@ export function ImportTrackRow({ item, first, last, locked, editNumbers, onChang
   onMove?: (direction: -1 | 1) => void;
   onRemove?: () => void;
 }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const titleLocked = locked || item.status === 'done';
   const statusBadge = item.status === 'uploading' ? <AdminBadge label={t('Uploading…')} tone="info" />
@@ -72,7 +73,7 @@ export function ImportTrackRow({ item, first, last, locked, editNumbers, onChang
   </View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   position: { width: 28, paddingTop: 10, color: colors.textMuted, fontSize: 14, fontWeight: '900', textAlign: 'center' },
   numbers: { flexDirection: 'row', alignItems: 'center', paddingTop: 2 },
@@ -82,9 +83,9 @@ const styles = StyleSheet.create({
   title: { minHeight: 38, borderRadius: radii.sm, backgroundColor: colors.surfaceStrong, color: colors.text, fontSize: 14, fontWeight: '700', paddingHorizontal: 10 },
   locked: { opacity: .6 },
   file: { color: colors.textDim, fontSize: 11, marginTop: 4 },
-  error: { color: '#fca5a5', fontSize: 11, marginTop: 4 },
+  error: { color: colors.danger, fontSize: 11, marginTop: 4 },
   badge: { flexDirection: 'row', marginTop: 6 },
   actions: { flexDirection: 'row', gap: 4, paddingTop: 2 },
   icon: { width: 32, height: 34, borderRadius: radii.sm, backgroundColor: colors.surfaceStrong, alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: .35 },
-});
+}));

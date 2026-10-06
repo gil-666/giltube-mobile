@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminLoading, AdminNotice, AdminProgress, AdminScreen, AdminSection, adminStyles, alertError, confirmAction } from '@/admin/ui';
 import { deleteIngest, deleteIngestFiles, ingestKeys, pauseIngest, retryIngest, useIngestList } from '@/admin/ingest/api';
@@ -10,7 +10,7 @@ import { canDelete, canDeleteFiles, canOpenAttach, canPause, canRetry, canUseAsT
 import { TrackImportPanel } from '@/admin/ingest/TrackImportPanel';
 import type { MediaIngest } from '@/admin/ingest/types';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 
 type Tool = 'attach' | 'audio' | 'subtitles';
 type Action = 'retry' | 'pause' | 'files' | 'delete';
@@ -33,6 +33,7 @@ export default function MediaIngestDetailScreen() {
 }
 
 function IngestDetail({ item }: { item: MediaIngest }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
@@ -100,10 +101,10 @@ function IngestDetail({ item }: { item: MediaIngest }) {
   </View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   first: { marginTop: 14 },
   gap: { marginTop: 6 },
   gapLarge: { marginTop: 12 },
   label: { color: colors.textDim, fontSize: 10, fontWeight: '900', letterSpacing: 1, marginBottom: 3 },
-  error: { color: '#fca5a5', fontSize: 12, lineHeight: 17, marginTop: 8 },
-});
+  error: { color: colors.danger, fontSize: 12, lineHeight: 17, marginTop: 8 },
+}));

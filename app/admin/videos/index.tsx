@@ -1,13 +1,13 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Text } from 'react-native';
 
 import { peopleAPI, peopleKeys } from '@/admin/people/api';
 import { SearchField, VideoListRow } from '@/admin/people/shared';
 import { AdminButton, AdminButtons, AdminChips, AdminEmpty, AdminError, AdminLoading, AdminScreen, useIsAdmin } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 
 const PAGE = 50;
 // The backend caps /admin/videos at 1000 rows and has no offset, so "load more" grows the limit.
@@ -15,6 +15,7 @@ const MAX_LIMIT = 1000;
 type VideoFilter = 'all' | 'hidden' | 'explicit' | 'not-ready' | 'custom-thumbnail';
 
 export default function AdminVideosScreen() {
+  const styles = useStyles();
   const { t } = useI18n();
   const isAdmin = useIsAdmin();
   const [search, setSearch] = useState('');
@@ -58,6 +59,6 @@ export default function AdminVideosScreen() {
   </AdminScreen>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   count: { color: colors.textDim, fontSize: 11, fontWeight: '700', marginTop: 14, marginBottom: 4 },
-});
+}));

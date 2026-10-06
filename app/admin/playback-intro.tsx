@@ -7,7 +7,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { opsAPI, type PlaybackIntro } from '@/admin/ops/api';
 import { AdminButton, AdminButtons, AdminCard, AdminError, AdminLoading, AdminNotice, AdminScreen, AdminSection, AdminToggle, adminStyles, alertError, confirmAction, formatBytes, pickFile, useIsAdmin } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 
 const INTRO_KEY = ['admin', 'ops', 'playback-intro'] as const;
@@ -15,6 +15,7 @@ const MAX_BYTES = 500 * 1024 * 1024;
 const ALLOWED = /\.(mp4|m4v|webm)$/i;
 
 export default function PlaybackIntroAdminScreen() {
+  const styles = useStyles();
   const { t, dateTime } = useI18n();
   const isAdmin = useIsAdmin();
   const client = useQueryClient();
@@ -92,13 +93,14 @@ export default function PlaybackIntroAdminScreen() {
 }
 
 function IntroPreview({ url }: { url: string }) {
+  const styles = useStyles();
   const player = useVideoPlayer(url, (instance) => { instance.loop = false; instance.play(); });
   return <View style={styles.player}>
     <VideoView player={player} style={StyleSheet.absoluteFill} nativeControls contentFit="contain" />
   </View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   meta: { marginTop: 8 },
   player: { width: '100%', aspectRatio: 16 / 9, borderRadius: radii.md, overflow: 'hidden', backgroundColor: colors.black },
-});
+}));

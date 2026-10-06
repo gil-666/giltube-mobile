@@ -82,7 +82,9 @@ export function NotificationProvider({ children }: React.PropsWithChildren) {
         const result = await giltubeAPI.notifications(); if (!active || !result.items.length) return;
         const previous = await SecureStore.getItemAsync(markerKey); const latest = result.items[0].created_at;
         if (previous && !remotePushEnabled) {
-          const fresh = result.items.filter((item) => !item.is_read && new Date(item.created_at) > new Date(previous)).reverse().slice(-4);
+          // Silent news only belongs in the feed; loud news (metadata.notify_mode)
+          // gets a local notification like other types when push isn't available.
+          const fresh = result.items.filter((item) => !item.is_read && (item.type !== 'news' || item.metadata?.notify_mode === 'loud') && new Date(item.created_at) > new Date(previous)).reverse().slice(-4);
           for (const item of fresh) await Notifications.scheduleNotificationAsync({ content: localNotificationContent(item, t), trigger: null });
         }
         await SecureStore.setItemAsync(markerKey, latest);

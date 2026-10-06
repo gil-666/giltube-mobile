@@ -61,6 +61,8 @@ export function notificationIDFromData(data: NotificationData) {
 }
 
 export function openNotificationContext(data: NotificationData) {
+  const newsMatch = stringValue(data, 'url').match(/^\/news\/([^/?#]+)/);
+  if (newsMatch) { router.push({ pathname: '/news/[id]', params: { id: decodeURIComponent(newsMatch[1]) } }); return; }
   const urlContext = contextFromURL(stringValue(data, 'url'));
 	if (urlContext.movieID) { router.push({ pathname: '/movies/[id]', params: { id: urlContext.movieID } }); return; }
 	if (urlContext.seriesID) { router.push({ pathname: '/series/[id]', params: { id: urlContext.seriesID } }); return; }

@@ -1,13 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminEmpty, AdminError, AdminField, AdminLoading, AdminNotice, AdminProgress, AdminSection, AdminToggle, alertError, confirmAction, formatBytes, pickFile } from './ui';
 import { withUploadFile, type PickedAsset } from './movies/files';
 import { apiRequest } from '@/api/client';
 import { sendForm, uploadFileChunks } from '@/api/upload';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 
 // Shared subtitle + audio track manager for one playable item. The three
 // track APIs share one shape and differ only in their base path (relative to
@@ -53,6 +53,7 @@ function trackForm(fields: { label: string; language: string; isDefault: boolean
 
 /** Milliseconds input that accepts negative values plus quick nudge buttons. */
 function DelayField({ label, value, onChange, help, allowNegative = true }: { label: string; value: number; onChange: (value: number) => void; help?: string; allowNegative?: boolean }) {
+  const styles = useStyles();
   const [text, setText] = useState(String(value));
   const [seen, setSeen] = useState(value);
   if (seen !== value) {
@@ -79,6 +80,7 @@ function UploadForm({ kind, replacing, onCancel, onSubmit, busy, progress }: {
   busy: boolean;
   progress: number | null;
 }) {
+  const styles = useStyles();
   const { t } = useI18n();
   // The parent keys this form by the track being replaced, so state starts fresh per target.
   const [asset, setAsset] = useState<PickedAsset | null>(null);
@@ -147,6 +149,7 @@ function TrackCard({ kind, track, busy, duplicateDefaults, syncSupported, onSave
   onDelete: (track: Track) => void;
   onSync: (track: Track, delayMs: number, trimStartMs: number) => Promise<boolean>;
 }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -204,6 +207,7 @@ function TrackCard({ kind, track, busy, duplicateDefaults, syncSupported, onSave
 }
 
 export function TrackManager({ basePath, title }: { basePath: string; title?: string }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const caps = capabilities(basePath);
@@ -394,11 +398,11 @@ export function TrackManager({ basePath, title }: { basePath: string; title?: st
   </View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   context: { color: colors.textMuted, fontSize: 12, marginTop: 14 },
   help: { color: colors.textDim, fontSize: 11, lineHeight: 15, marginBottom: 10 },
   cardTitle: { color: colors.text, fontSize: 14, fontWeight: '800' },
   meta: { color: colors.textMuted, fontSize: 12, marginTop: 8 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 6 },
   nudges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-});
+}));

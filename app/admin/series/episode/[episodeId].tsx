@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { episodeDetailsFrom, invalidateSeries, seriesAPI, seriesKeys, type AdminEpisode, type EpisodeDetails } from '@/admin/series/api';
 import { IntroPlayer } from '@/admin/series/IntroPlayer';
@@ -10,7 +10,7 @@ import { SecondsField } from '@/admin/series/SecondsField';
 import { TrackManager } from '@/admin/TrackManager';
 import { AdminButton, AdminButtons, AdminCard, AdminError, AdminField, AdminLoading, AdminNotice, AdminNumberField, AdminScreen, AdminSection, AdminToggle, adminStyles, alertError, useIsAdmin } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 
 export default function AdminSeriesEpisodeScreen() {
@@ -33,6 +33,7 @@ export default function AdminSeriesEpisodeScreen() {
 }
 
 function EpisodeEditor({ episode }: { episode: AdminEpisode }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<EpisodeDetails>(() => episodeDetailsFrom(episode));
@@ -126,9 +127,9 @@ function EpisodeEditor({ episode }: { episode: AdminEpisode }) {
   </>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   thumb: { width: '100%', aspectRatio: 16 / 9, borderRadius: radii.lg, backgroundColor: colors.surfaceStrong, marginTop: 12 },
   pair: { flexDirection: 'row', gap: 10 },
   half: { flex: 1 },
   topGap: { marginTop: 12 },
-});
+}));

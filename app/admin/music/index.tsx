@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 
 import { musicAPI, useInvalidateMusic, useMusicCatalog } from '@/admin/music/api';
 import { releasePublishProblems, syncReleaseLyrics, syncSummary } from '@/admin/music/actions';
@@ -11,12 +11,13 @@ import type { AdminMusicRelease, AdminMusicTrack } from '@/admin/music/types';
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminLoading, AdminNotice, AdminRow, AdminScreen, AdminSection } from '@/admin/ui';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 import { openGilTubeWeb } from '@/utils/web';
 
 type Tab = 'artists' | 'releases' | 'tracks';
 
 export default function MusicAdminScreen() {
+  const styles = useStyles();
   const { t, dateTime } = useI18n();
   const catalog = useMusicCatalog();
   const invalidate = useInvalidateMusic();
@@ -174,7 +175,7 @@ export default function MusicAdminScreen() {
   </AdminScreen>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   headerButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   help: { color: colors.textMuted, fontSize: 12, lineHeight: 17, marginBottom: 6 },
   group: { marginTop: 12 },
@@ -183,4 +184,4 @@ const styles = StyleSheet.create({
   groupTitle: { color: colors.text, fontSize: 15, fontWeight: '900' },
   groupSubtitle: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 6 },
-});
+}));

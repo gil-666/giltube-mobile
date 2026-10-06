@@ -2,19 +2,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { peopleAPI, peopleKeys, type AdminChannel } from '@/admin/people/api';
 import { ModerationButtons, SearchField, StatusBadge, normalizedStatus, statusFilterOptions, useModeration, type StatusFilter } from '@/admin/people/shared';
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminLoading, AdminScreen, adminStyles, useIsAdmin } from '@/admin/ui';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 
 const PAGE = 40;
 type SortKey = 'views' | 'videos' | 'newest' | 'name';
 
 export default function AdminChannelsScreen() {
+  const styles = useStyles();
   const { t } = useI18n();
   const isAdmin = useIsAdmin();
   const params = useLocalSearchParams<{ q?: string }>();
@@ -60,6 +61,7 @@ export default function AdminChannelsScreen() {
 }
 
 function ChannelCard({ channel, moderation }: { channel: AdminChannel; moderation: ReturnType<typeof useModeration> }) {
+  const styles = useStyles();
   const { t, compactNumber, dateTime } = useI18n();
   const isProtected = channel.user_type === 'admin';
   const open = () => router.push({ pathname: '/admin/channels/[id]', params: { id: channel.id, name: channel.name } });
@@ -84,11 +86,11 @@ function ChannelCard({ channel, moderation }: { channel: AdminChannel; moderatio
   </AdminCard>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   count: { color: colors.textDim, fontSize: 11, fontWeight: '700', marginTop: 14, marginBottom: 8 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headCopy: { flex: 1, minWidth: 0 },
   name: { color: colors.text, fontSize: 15, fontWeight: '800' },
   badges: { flexDirection: 'row', gap: 5 },
   stats: { color: colors.text, fontSize: 12, marginTop: 8, marginBottom: 2 },
-});
+}));

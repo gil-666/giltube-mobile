@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { giltubeAPI } from '@/api/giltube';
@@ -13,11 +13,12 @@ import { PressableScale } from '@/components/PressableScale';
 import { VerifiedBadge } from '@/components/VerifiedBadge';
 import { VideoCard } from '@/components/VideoCard';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import type { Channel, Video } from '@/types/api';
 import { resolveMediaURL } from '@/utils/media';
 
 export default function SubscriptionsScreen() {
+  const styles = useStyles();
   const insets = useSafeAreaInsets(); const { account, status } = useAuth(); const signedIn = status === 'signedIn' && !!account;
   const { t } = useI18n();
   const { activeChannelID: actorID, isLoading: channelsLoading } = useActiveChannel();
@@ -38,10 +39,11 @@ export default function SubscriptionsScreen() {
 }
 
 function SubscriptionRow({ channel, videos }: { channel: Channel; videos: Video[] }) {
+  const styles = useStyles();
   const { t } = useI18n();
   return <View style={styles.channelSection}><PressableScale onPress={() => router.push({ pathname: '/channel/[id]', params: { id: channel.id } })} style={styles.rowHeader}><Image source={resolveMediaURL(channel.avatar_url || '')} style={styles.rowAvatar} contentFit="cover" /><View style={styles.rowName}><Text numberOfLines={1} style={styles.rowTitle}>{channel.name}</Text><VerifiedBadge verified={channel.verified} size={14} /></View><Text style={styles.latest}>{videos.length} {t('latest')}</Text><Ionicons name="chevron-forward" color={colors.textDim} size={18} /></PressableScale><FlatList horizontal data={videos} keyExtractor={(item) => item.id} renderItem={({ item, index }) => <VideoCard video={item} index={index} />} contentContainerStyle={styles.videoRail} ItemSeparatorComponent={() => <View style={styles.separator} />} showsHorizontalScrollIndicator={false} initialNumToRender={3} windowSize={4} /></View>;
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.canvas }, titleRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18 }, heading: { color: colors.text, fontSize: 34, fontWeight: '900', letterSpacing: -1.2 }, count: { minWidth: 27, height: 27, marginLeft: 10, paddingHorizontal: 7, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceStrong }, countText: { color: colors.textMuted, fontSize: 11, fontWeight: '900' }, loader: { marginTop: 60 }, sectionHeading: { marginTop: 24, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, sectionTitle: { color: colors.text, fontSize: 18, fontWeight: '900' }, sectionMeta: { color: colors.textDim, fontSize: 10, fontWeight: '700' }, channelRail: { paddingHorizontal: 18, gap: 16, paddingTop: 14, paddingBottom: 5 }, channelItem: { width: 72, alignItems: 'center' }, avatar: { width: 62, height: 62, borderRadius: 31, backgroundColor: colors.surfaceStrong, borderWidth: 1, borderColor: colors.border }, channelLabel: { width: 78, marginTop: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 }, channelName: { color: colors.text, fontSize: 11, fontWeight: '700', maxWidth: 62, textAlign: 'center' }, channelSection: { marginTop: 28 }, rowHeader: { minHeight: 48, marginHorizontal: 18, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }, rowAvatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.surfaceStrong }, rowName: { flex: 1, minWidth: 0, marginLeft: 11, flexDirection: 'row', alignItems: 'center', gap: 5 }, rowTitle: { color: colors.text, fontSize: 17, fontWeight: '900', flexShrink: 1 }, latest: { color: colors.textDim, fontSize: 10, marginRight: 4 }, videoRail: { paddingHorizontal: 18 }, separator: { width: 14 }, center: { flex: 1, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.canvas }, emptyCard: { margin: 18, marginTop: 32, padding: 24, borderRadius: radii.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }, emptyTitle: { color: colors.text, fontSize: 22, fontWeight: '900', textAlign: 'center' }, emptyBody: { color: colors.textMuted, fontSize: 14, lineHeight: 21, marginTop: 8, textAlign: 'center' }, action: { height: 50, paddingHorizontal: 24, marginTop: 22, borderRadius: radii.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.gilid }, actionText: { color: colors.black, fontWeight: '900' },
-});
+const useStyles = makeStyles(() => ({
+  screen: { flex: 1, backgroundColor: colors.screen }, titleRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18 }, heading: { color: colors.text, fontSize: 34, fontWeight: '900', letterSpacing: -1.2 }, count: { minWidth: 27, height: 27, marginLeft: 10, paddingHorizontal: 7, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceStrong }, countText: { color: colors.textMuted, fontSize: 11, fontWeight: '900' }, loader: { marginTop: 60 }, sectionHeading: { marginTop: 24, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, sectionTitle: { color: colors.text, fontSize: 18, fontWeight: '900' }, sectionMeta: { color: colors.textDim, fontSize: 10, fontWeight: '700' }, channelRail: { paddingHorizontal: 18, gap: 16, paddingTop: 14, paddingBottom: 5 }, channelItem: { width: 72, alignItems: 'center' }, avatar: { width: 62, height: 62, borderRadius: 31, backgroundColor: colors.surfaceStrong, borderWidth: 1, borderColor: colors.border }, channelLabel: { width: 78, marginTop: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 }, channelName: { color: colors.text, fontSize: 11, fontWeight: '700', maxWidth: 62, textAlign: 'center' }, channelSection: { marginTop: 28 }, rowHeader: { minHeight: 48, marginHorizontal: 18, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }, rowAvatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.surfaceStrong }, rowName: { flex: 1, minWidth: 0, marginLeft: 11, flexDirection: 'row', alignItems: 'center', gap: 5 }, rowTitle: { color: colors.text, fontSize: 17, fontWeight: '900', flexShrink: 1 }, latest: { color: colors.textDim, fontSize: 10, marginRight: 4 }, videoRail: { paddingHorizontal: 18 }, separator: { width: 14 }, center: { flex: 1, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.screen }, emptyCard: { margin: 18, marginTop: 32, padding: 24, borderRadius: radii.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }, emptyTitle: { color: colors.text, fontSize: 22, fontWeight: '900', textAlign: 'center' }, emptyBody: { color: colors.textMuted, fontSize: 14, lineHeight: 21, marginTop: 8, textAlign: 'center' }, action: { height: 50, paddingHorizontal: 24, marginTop: 22, borderRadius: radii.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.gilid }, actionText: { color: colors.black, fontWeight: '900' },
+}));

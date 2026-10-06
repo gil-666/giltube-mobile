@@ -1,6 +1,6 @@
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Text, View } from 'react-native';
 import { RelatedMediaCard, VideoCard } from './VideoCard';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 import type { RelatedMedia, Video } from '@/types/api';
 
 type RailItem = { key: string; video?: Video; media?: RelatedMedia };
@@ -15,6 +15,7 @@ function railItems(videos: Video[], media: RelatedMedia[] = [], mediaFirst = fal
 }
 
 export function SectionRail({ title, subtitle, videos, media, mediaFirst, progressByVideoID }: { title: string; subtitle?: string; videos: Video[]; media?: RelatedMedia[]; mediaFirst?: boolean; progressByVideoID?: Record<string, number> }) {
+  const styles = useStyles();
   if (!videos?.length && !media?.length) return null;
   return (
     <View style={styles.section}>
@@ -38,11 +39,11 @@ export function SectionRail({ title, subtitle, videos, media, mediaFirst, progre
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   section: { marginTop: 30 },
   heading: { paddingHorizontal: 18, marginBottom: 13 },
   title: { color: colors.text, fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
   subtitle: { color: colors.textMuted, fontSize: 13, marginTop: 3 },
   list: { paddingHorizontal: 18 },
   separator: { width: 14 },
-});
+}));

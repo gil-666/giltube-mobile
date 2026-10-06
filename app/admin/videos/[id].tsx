@@ -2,14 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 
 import { peopleAPI, peopleKeys, type EditableVideo } from '@/admin/people/api';
 import { VideoStatusBadge } from '@/admin/people/shared';
 import { TrackManager } from '@/admin/TrackManager';
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminError, AdminField, AdminLoading, AdminNotice, AdminProgress, AdminScreen, AdminSection, AdminToggle, adminStyles, alertError, confirmAction, formatBytes, pickFile, useIsAdmin } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 
 const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
@@ -25,6 +25,7 @@ const formFromVideo = (video: EditableVideo): Form => ({
 });
 
 export default function AdminVideoEditorScreen() {
+  const styles = useStyles();
   const { t, compactNumber, dateTime } = useI18n();
   const isAdmin = useIsAdmin();
   const queryClient = useQueryClient();
@@ -171,11 +172,11 @@ export default function AdminVideoEditorScreen() {
   </AdminScreen>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   summary: { marginTop: 14 },
   spaced: { marginTop: 8 },
   preview: { width: '100%', aspectRatio: 16 / 9, borderRadius: radii.md, overflow: 'hidden', backgroundColor: colors.surfaceStrong, alignItems: 'center', justifyContent: 'center', padding: 12 },
   previewNew: { borderWidth: 2, borderColor: colors.accentBright },
   previewImage: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   tracks: { marginTop: 8 },
-});
+}));

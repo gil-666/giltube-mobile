@@ -7,7 +7,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { PressableScale } from '@/components/PressableScale';
 import { SwipeSheet } from '@/components/SwipeSheet';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 
 const icon = (name: keyof typeof Ionicons.glyphMap) => {
   function TabBarIcon({ color, size }: { color: ColorValue; size: number }) {
@@ -17,10 +17,12 @@ const icon = (name: keyof typeof Ionicons.glyphMap) => {
 };
 
 function CreateIcon() {
-  return <View style={styles.createIcon}><Ionicons name="add" color={colors.white} size={27} /></View>;
+  const styles = useStyles();
+  return <View style={styles.createIcon}><Ionicons name="add" color={colors.onAccent} size={27} /></View>;
 }
 
 export default function TabLayout() {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
   const { status } = useAuth();
@@ -48,10 +50,10 @@ export default function TabLayout() {
           paddingTop: 7,
           paddingBottom: bottomInset,
           borderTopColor: colors.border,
-          backgroundColor: 'rgba(9,9,11,.96)',
+          backgroundColor: colors.canvas,
         },
         tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
-        sceneStyle: { backgroundColor: colors.canvas },
+        sceneStyle: { backgroundColor: colors.screen },
       }}
     >
       <Tabs.Screen name="index" options={{ title: t('Home'), tabBarIcon: icon('home') }} />
@@ -69,10 +71,11 @@ export default function TabLayout() {
 }
 
 function CreateChoice({ icon: iconName, title, subtitle, onPress }: { icon: keyof typeof Ionicons.glyphMap; title: string; subtitle: string; onPress: () => void }) {
+  const styles = useStyles();
   return <PressableScale onPress={onPress} style={styles.choice}><View style={styles.choiceIcon}><Ionicons name={iconName} color={colors.text} size={23} /></View><View style={styles.choiceCopy}><Text style={styles.choiceTitle}>{title}</Text><Text style={styles.choiceSubtitle}>{subtitle}</Text></View><Ionicons name="chevron-forward" color={colors.textDim} size={19} /></PressableScale>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   createIcon: { width: 42, height: 42, marginTop: -10, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentBright, borderWidth: 3, borderColor: colors.canvas, shadowColor: colors.accentBright, shadowOpacity: 0.35, shadowRadius: 7, shadowOffset: { width: 0, height: 2 }, elevation: 7 },
   createLabel: { color: colors.accentBright, fontSize: 10, fontWeight: '900' },
   choice: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 13, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
@@ -80,4 +83,4 @@ const styles = StyleSheet.create({
   choiceCopy: { flex: 1 },
   choiceTitle: { color: colors.text, fontSize: 14, fontWeight: '900' },
   choiceSubtitle: { color: colors.textMuted, fontSize: 11, marginTop: 3 },
-});
+}));

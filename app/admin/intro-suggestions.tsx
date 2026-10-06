@@ -1,17 +1,18 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { formatDuration, invalidateSeries, seriesAPI, seriesKeys, type IntroSuggestion } from '@/admin/series/api';
 import { IntroPlayer } from '@/admin/series/IntroPlayer';
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminLoading, AdminNotice, AdminScreen, adminStyles, useIsAdmin } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 
 type Status = 'pending' | 'approved' | 'rejected' | 'all';
 
 export default function AdminIntroSuggestionsScreen() {
+  const styles = useStyles();
   const { t, dateTime } = useI18n();
   const isAdmin = useIsAdmin();
   const queryClient = useQueryClient();
@@ -75,7 +76,7 @@ export default function AdminIntroSuggestionsScreen() {
   </AdminScreen>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   list: { marginTop: 14 },
   title: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '800' },
   gap: { marginTop: 8 },
@@ -83,4 +84,4 @@ const styles = StyleSheet.create({
   timing: { flex: 1, borderRadius: radii.md, backgroundColor: colors.surfaceStrong, padding: 10 },
   timingLabel: { color: colors.textDim, fontSize: 10, fontWeight: '800' },
   timingValue: { color: colors.text, fontSize: 13, fontWeight: '800', fontFamily: 'monospace', marginTop: 3 },
-});
+}));

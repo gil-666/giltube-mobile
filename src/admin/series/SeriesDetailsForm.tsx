@@ -9,7 +9,7 @@ import { errorMessage, invalidateSeries, seriesAPI, seriesFormFrom, type AdminSe
 import { contentRatingInputFrom, ContentRatingEditor, emptyContentRatingInput, type ContentRatingInput } from '@/admin/ContentRatingEditor';
 import { AdminButton, AdminButtons, AdminCard, AdminError, AdminField, AdminNotice, AdminNumberField, AdminSection, AdminToggle, confirmAction, pickFile } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 
 // TMDB episode titles picked before the series exists survive the hop from
@@ -21,6 +21,7 @@ export function takePendingMetadataEpisodes(seriesID: string) {
 }
 
 export function SeriesDetailsForm({ seriesID, initial, metadataEpisodes, onMetadataEpisodes }: { seriesID: string; initial?: AdminSeries | null; metadataEpisodes: MetadataEpisode[]; onMetadataEpisodes: (episodes: MetadataEpisode[]) => void }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [values, setValues] = useState<SeriesFormValues>(() => seriesFormFrom(initial));
@@ -175,6 +176,7 @@ export function SeriesDetailsForm({ seriesID, initial, metadataEpisodes, onMetad
 }
 
 function ImageField({ label, url, asset, portrait, onURL, onPick, onClear }: { label: string; url: string; asset: DocumentPickerAsset | null; portrait?: boolean; onURL: (url: string) => void; onPick: () => void; onClear: () => void }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const preview = asset?.uri || resolveMediaURL(url);
   return <AdminCard>
@@ -190,7 +192,7 @@ function ImageField({ label, url, asset, portrait, onURL, onPick, onClear }: { l
   </AdminCard>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   result: { flexDirection: 'row', gap: 12, marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   resultPoster: { width: 64, aspectRatio: 2 / 3, borderRadius: radii.sm, backgroundColor: colors.surfaceStrong },
   resultCopy: { flex: 1, minWidth: 0 },
@@ -201,4 +203,4 @@ const styles = StyleSheet.create({
   posterPreview: { width: '50%', aspectRatio: 2 / 3, alignSelf: 'center', borderRadius: radii.md, backgroundColor: colors.black },
   backdropPreview: { width: '100%', aspectRatio: 16 / 9, borderRadius: radii.md, backgroundColor: colors.black },
   picked: { color: colors.text, fontSize: 12, marginTop: 10 },
-});
+}));

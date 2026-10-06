@@ -1,14 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import type { ContentRating, MediaCapabilities } from '@/types/api';
 import { contentDescriptorText } from '@/utils/contentRating';
 
 // 18+, rating, quality, HDR and 5.1 surround chips for movie and series
 // detail screens. Each chip only appears when the content actually has it.
 export function MediaBadges({ capabilities, rating, explicit }: { capabilities?: MediaCapabilities; rating?: ContentRating; explicit?: boolean }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const hasRating = !!rating?.rating;
   if (!explicit && !hasRating && (!capabilities || (!capabilities.max_quality && !capabilities.hdr && !capabilities.surround))) return null;
@@ -23,9 +24,9 @@ export function MediaBadges({ capabilities, rating, explicit }: { capabilities?:
   </View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 },
-  quality: { flexDirection: 'row', gap: 7, paddingHorizontal: 11, paddingVertical: 7, borderRadius: radii.pill, backgroundColor: 'rgba(239,68,68,.1)' },
+  quality: { flexDirection: 'row', gap: 7, paddingHorizontal: 11, paddingVertical: 7, borderRadius: radii.pill, backgroundColor: withAlpha(colors.accentBright, .1) },
   qualityText: { color: colors.accentBright, fontSize: 11, fontWeight: '800' },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: radii.pill, borderWidth: 1 },
   chipText: { fontSize: 11, fontWeight: '900', letterSpacing: .4 },
@@ -38,4 +39,4 @@ const styles = StyleSheet.create({
   rating: { backgroundColor: 'rgba(0,0,0,.35)', borderColor: 'rgba(255,255,255,.55)' },
   ratingText: { color: colors.white },
   descriptors: { alignSelf: 'center', color: colors.textMuted, fontSize: 12 },
-});
+}));

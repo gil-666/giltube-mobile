@@ -10,7 +10,7 @@ import { readAudioTags, type ParsedAudioTags } from '@/admin/music/tags';
 import type { LocalMusicFile, MusicReleaseInput, MusicReleaseType } from '@/admin/music/types';
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminField, AdminLoading, AdminNotice, AdminProgress, AdminScreen, AdminSection, AdminToggle } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 
 // Quick upload: pick audio files, read their embedded tags, confirm the
 // album details, then create (or reuse) the artist, create the release and
@@ -23,6 +23,7 @@ type QuickForm = Omit<MusicReleaseInput, 'artist_id'> & { artist: string };
 const emptyForm = (): QuickForm => ({ artist: '', title: '', release_type: 'album', release_date: '', label: '', copyright_text: '', phonogram_text: '', territories: 'Worldwide', rights_confirmed: false });
 
 export default function MusicQuickUploadScreen() {
+  const styles = useStyles();
   const { t } = useI18n();
   const catalog = useMusicCatalog();
   const invalidate = useInvalidateMusic();
@@ -251,7 +252,7 @@ export default function MusicQuickUploadScreen() {
   </AdminScreen>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   help: { color: colors.textMuted, fontSize: 12, lineHeight: 17, marginBottom: 6 },
   fileRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   position: { width: 26, color: colors.textMuted, fontSize: 14, fontWeight: '900', textAlign: 'center' },
@@ -259,4 +260,4 @@ const styles = StyleSheet.create({
   fileTitle: { color: colors.text, fontSize: 14, fontWeight: '800' },
   fileName: { color: colors.textDim, fontSize: 11, marginTop: 3 },
   coverRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14 },
-});
+}));

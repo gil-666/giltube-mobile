@@ -14,10 +14,12 @@ export const notificationAction: Record<NotificationItem['type'], string> = {
   watch_party_host: 'Made you the watch party host',
   new_subscriber: 'Subscribed to your channel',
 	featured_content: 'Featured on GilTube',
+	news: 'News from GilTube',
 };
 
 export function localNotificationContent(item: NotificationItem, t: (source: string) => string): NotificationContentInput {
-	const featuredTitle = typeof item.metadata?.push_title === 'string' ? item.metadata.push_title : '';
+	const newsTitle = item.type === 'news' && typeof item.metadata?.title === 'string' ? item.metadata.title : '';
+	const featuredTitle = (typeof item.metadata?.push_title === 'string' ? item.metadata.push_title : '') || newsTitle;
 	const featuredBody = typeof item.metadata?.push_body === 'string' ? item.metadata.push_body : '';
   const comment = item.target_comment?.snippet.trim();
   const video = item.target_video?.title.trim();

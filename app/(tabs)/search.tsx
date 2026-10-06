@@ -12,7 +12,7 @@ import { giltubeAPI } from '@/api/giltube';
 import { PressableScale } from '@/components/PressableScale';
 import { VerifiedBadge } from '@/components/VerifiedBadge';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import type { SearchResult } from '@/types/api';
 import { resolveMediaURL } from '@/utils/media';
 
@@ -20,6 +20,7 @@ const historyKey = 'giltube.search-history.v1';
 const historyLimit = 10;
 
 export default function SearchScreen() {
+  const styles = useStyles();
   const { t, compactNumber } = useI18n();
   const { q: initialQuery = '' } = useLocalSearchParams<{ q?: string }>();
   const insets = useSafeAreaInsets();
@@ -113,8 +114,8 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.canvas, paddingHorizontal: 18 }, title: { color: colors.text, fontSize: 34, fontWeight: '900', letterSpacing: -1.2 },
+const useStyles = makeStyles(() => ({
+  screen: { flex: 1, backgroundColor: colors.screen, paddingHorizontal: 18 }, title: { color: colors.text, fontSize: 34, fontWeight: '900', letterSpacing: -1.2 },
   searchBox: { height: 52, borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 15, paddingRight: 7, marginTop: 20 }, input: { flex: 1, color: colors.text, fontSize: 16 }, submit: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceStrong }, results: { paddingTop: 12 }, hint: { color: colors.textMuted, fontSize: 14, marginTop: 12 }, historyHeader: { marginTop: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, historyTitle: { color: colors.text, fontSize: 17, fontWeight: '900' }, clear: { color: colors.gilid, fontSize: 12, fontWeight: '800' }, term: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }, termText: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '700' }, removeHistory: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   result: { minHeight: 92, flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }, art: { width: 126, aspectRatio: 16 / 9, borderRadius: radii.md, backgroundColor: colors.surfaceStrong }, avatar: { width: 70, height: 70, borderRadius: 35 }, copy: { flex: 1, minWidth: 0 }, typeRow: { flexDirection: 'row', gap: 5, alignItems: 'center' }, type: { color: colors.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1 }, titleRow: { flexDirection: 'row', alignItems: 'center', gap: 5 }, resultTitle: { color: colors.text, fontSize: 15, lineHeight: 19, fontWeight: '800', marginTop: 4, flexShrink: 1 }, videoMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }, channelName: { color: colors.textMuted, fontSize: 11, maxWidth: 130 }, meta: { color: colors.textMuted, fontSize: 11, lineHeight: 15, marginTop: 4 }, videoMetaText: { color: colors.textMuted, fontSize: 11 },
-});
+}));

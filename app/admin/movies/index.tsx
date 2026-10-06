@@ -5,11 +5,12 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { moviesAPI } from '@/admin/movies/api';
-import { AdminBadge, AdminButton, AdminEmpty, AdminError, AdminField, AdminLoading, AdminRow, AdminScreen, AdminSection, adminStyles, useIsAdmin } from '@/admin/ui';
+import { AdminBadge, AdminButton, AdminEmpty, AdminError, AdminField, AdminLoading, AdminRow, AdminScreen, AdminSection, useAdminStyles, useIsAdmin } from '@/admin/ui';
 import { useI18n } from '@/i18n';
 import { resolveMediaURL } from '@/utils/media';
 
 export default function AdminMoviesScreen() {
+  const adminStyles = useAdminStyles();
   const { t } = useI18n();
   const isAdmin = useIsAdmin();
   const [search, setSearch] = useState('');

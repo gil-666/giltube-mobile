@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 
 import { releasePublishProblems, syncReleaseLyrics, syncSummary } from '@/admin/music/actions';
 import { musicAPI, useInvalidateMusic, useMusicCatalog } from '@/admin/music/api';
@@ -9,7 +9,7 @@ import { errorMessage, isValidDate, lyricsStatusLabel, lyricsTone, publishErrorM
 import type { LocalMusicFile, MusicReleaseInput, MusicReleaseType } from '@/admin/music/types';
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminField, AdminLoading, AdminNotice, AdminRow, AdminScreen, AdminSection, AdminToggle, confirmAction, pickFile } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 
 const emptyForm = (artistID = ''): MusicReleaseInput => ({
   artist_id: artistID, title: '', release_type: 'single', release_date: '', label: '',
@@ -17,6 +17,7 @@ const emptyForm = (artistID = ''): MusicReleaseInput => ({
 });
 
 export default function MusicReleaseScreen() {
+  const styles = useStyles();
   const { id = 'new', artist: artistParam } = useLocalSearchParams<{ id: string; artist?: string }>();
   const isNew = id === 'new';
   const { t } = useI18n();
@@ -208,10 +209,10 @@ export default function MusicReleaseScreen() {
   </AdminScreen>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   coverRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   coverCopy: { flex: 1, minWidth: 0 },
   muted: { color: colors.textMuted, fontSize: 12, lineHeight: 17 },
   help: { color: colors.textDim, fontSize: 11, lineHeight: 15, marginTop: 8 },
-});
+}));

@@ -6,13 +6,15 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, TextInput } from 'react-native';
 
 import { seriesAPI, seriesKeys } from '@/admin/series/api';
-import { AdminBadge, AdminButton, AdminButtons, AdminEmpty, AdminError, AdminLoading, AdminRow, AdminScreen, AdminSection, adminStyles, useIsAdmin } from '@/admin/ui';
+import { AdminBadge, AdminButton, AdminButtons, AdminEmpty, AdminError, AdminLoading, AdminRow, AdminScreen, AdminSection, useAdminStyles, useIsAdmin } from '@/admin/ui';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 
 export default function AdminSeriesListScreen() {
+  const styles = useStyles();
+  const adminStyles = useAdminStyles();
   const { t } = useI18n();
   const isAdmin = useIsAdmin();
   const [search, setSearch] = useState('');
@@ -29,7 +31,7 @@ export default function AdminSeriesListScreen() {
     subtitle={t('Create metadata, upload a public trailer, and ingest hidden episode videos.')}
     refreshing={series.isRefetching}
     onRefresh={() => void series.refetch()}
-    right={<PressableScale accessibilityLabel={t('New series')} onPress={openNew} style={styles.add}><Ionicons name="add" size={24} color={colors.black} /></PressableScale>}
+    right={<PressableScale accessibilityLabel={t('New series')} onPress={openNew} style={styles.add}><Ionicons name="add" size={24} color={colors.onText} /></PressableScale>}
   >
     <TextInput value={search} onChangeText={setSearch} placeholder={t('Search series')} placeholderTextColor={colors.textDim} selectionColor={colors.accentBright} autoCapitalize="none" style={styles.search} />
     <AdminButtons>
@@ -55,7 +57,7 @@ export default function AdminSeriesListScreen() {
   </AdminScreen>;
 }
 
-const styles = StyleSheet.create({
-  add: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+const useStyles = makeStyles(() => ({
+  add: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.text, alignItems: 'center', justifyContent: 'center' },
   search: { minHeight: 46, marginTop: 12, borderRadius: radii.pill, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: colors.surface, color: colors.text, fontSize: 14, paddingHorizontal: 16 },
-});
+}));

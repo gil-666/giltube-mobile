@@ -5,12 +5,13 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { peopleAPI, peopleKeys } from '@/admin/people/api';
 import { ModerationButtons, SearchField, StatusBadge, VideoListRow, useModeration } from '@/admin/people/shared';
-import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminEmpty, AdminError, AdminLoading, AdminScreen, AdminSection, adminStyles, useIsAdmin } from '@/admin/ui';
+import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminEmpty, AdminError, AdminLoading, AdminScreen, AdminSection, useAdminStyles, useIsAdmin } from '@/admin/ui';
 import { useI18n } from '@/i18n';
 
 const PAGE = 40;
 
 export default function AdminChannelDetailScreen() {
+  const adminStyles = useAdminStyles();
   const { t, compactNumber, dateTime } = useI18n();
   const isAdmin = useIsAdmin();
   const params = useLocalSearchParams<{ id: string; name?: string }>();

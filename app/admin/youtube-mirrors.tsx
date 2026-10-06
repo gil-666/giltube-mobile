@@ -4,7 +4,7 @@ import { Text, View, StyleSheet } from 'react-native';
 
 import { ChannelPicker } from '@/admin/ops/ChannelPicker';
 import { MirrorImportError, opsAPI, type MirrorChannel } from '@/admin/ops/api';
-import { AdminButton, AdminButtons, AdminCard, AdminEmpty, AdminError, AdminField, AdminLoading, AdminNotice, AdminRow, AdminScreen, AdminSection, AdminToggle, adminStyles, alertError, confirmAction, useIsAdmin } from '@/admin/ui';
+import { AdminButton, AdminButtons, AdminCard, AdminEmpty, AdminError, AdminField, AdminLoading, AdminNotice, AdminRow, AdminScreen, AdminSection, AdminToggle, alertError, confirmAction, useAdminStyles, useIsAdmin } from '@/admin/ui';
 import { useI18n } from '@/i18n';
 
 const MAPPINGS_KEY = ['admin', 'ops', 'youtube-mirrors'] as const;
@@ -13,6 +13,7 @@ const blankImport = { url: '', giltubeChannelID: '', explicit: false, hidden: fa
 const blankMapping = { youtubeChannelID: '', youtubeChannelTitle: '', youtubeChannelURL: '', giltubeChannelID: '', createNewChannel: false };
 
 export default function YouTubeMirrorsAdminScreen() {
+  const adminStyles = useAdminStyles();
   const { t } = useI18n();
   const isAdmin = useIsAdmin();
   const client = useQueryClient();

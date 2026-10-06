@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
 import type { ComponentProps } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import type { Ionicons } from '@expo/vector-icons';
 
 import { adminRequest } from '@/admin/api';
 import { AdminRow, AdminScreen, AdminSection, useIsAdmin } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 
 type AdminStats = { total_users: number; total_channels: number; total_videos: number; total_views: number; total_comments: number; admin_count: number; total_categories: number };
 type Tool = { href: string; icon: ComponentProps<typeof Ionicons>['name']; title: string; subtitle: string };
@@ -32,11 +32,13 @@ const groups: { title: string; tools: Tool[] }[] = [
   ] },
   { title: 'Home & playback', tools: [
     { href: '/admin/featured', icon: 'star-outline', title: 'Featured', subtitle: 'Home banner content' },
+    { href: '/admin/news', icon: 'megaphone-outline', title: 'News', subtitle: 'Startup panels and announcements' },
     { href: '/admin/playback-intro', icon: 'sparkles-outline', title: 'Playback intro', subtitle: 'Clip before movies and episodes' },
   ] },
 ];
 
 export default function AdminHomeScreen() {
+  const styles = useStyles();
   const { t, compactNumber } = useI18n();
   const isAdmin = useIsAdmin();
   const stats = useQuery({ queryKey: ['admin', 'stats'], queryFn: () => adminRequest<AdminStats>('/stats'), enabled: isAdmin });
@@ -52,9 +54,9 @@ export default function AdminHomeScreen() {
   </AdminScreen>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
   stat: { width: '31.5%', borderRadius: radii.md, backgroundColor: colors.surface, paddingVertical: 12, paddingHorizontal: 10 },
   statValue: { color: colors.text, fontSize: 18, fontWeight: '900' },
   statLabel: { color: colors.textMuted, fontSize: 10, fontWeight: '700', marginTop: 2 },
-});
+}));

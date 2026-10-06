@@ -7,11 +7,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { giltubeAPI } from '@/api/giltube';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import type { NotificationItem } from '@/types/api';
 
 type EventType = NotificationItem['type'];
 const groups: { title: string; items: { type: EventType; title: string; description: string; icon: keyof typeof Ionicons.glyphMap }[] }[] = [
+  { title: 'FROM GILTUBE', items: [{ type: 'news', title: 'News and announcements', description: 'Updates and announcements from the GilTube team', icon: 'megaphone-outline' }] },
 	{ title: 'FEATURED', items: [{ type: 'featured_content', title: 'Featured content', description: 'Platform picks, premieres, and scheduled live reminders', icon: 'sparkles-outline' }] },
   { title: 'VIDEOS & CHANNELS', items: [
     { type: 'new_video', title: 'New videos', description: 'A channel you subscribe to uploads a video', icon: 'play-circle-outline' },
@@ -32,6 +33,7 @@ const groups: { title: string; items: { type: EventType; title: string; descript
 ];
 
 export default function NotificationSettingsScreen() {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const client = useQueryClient();
   const { t } = useI18n();
@@ -53,6 +55,6 @@ export default function NotificationSettingsScreen() {
   </View>;
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.canvas }, header: { minHeight: 84, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, backgroundColor: colors.canvasRaised }, back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }, heading: { color: colors.text, fontSize: 21, fontWeight: '900' }, headerMeta: { color: colors.textMuted, fontSize: 10, marginTop: 2 }, loader: { marginTop: 100 }, info: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: radii.lg, borderWidth: 1, borderColor: 'rgba(34,211,238,.2)', backgroundColor: 'rgba(34,211,238,.06)' }, infoText: { flex: 1, color: colors.textMuted, fontSize: 11, lineHeight: 17 }, groupTitle: { color: colors.textDim, fontSize: 9, fontWeight: '900', letterSpacing: 1.3, marginTop: 25, marginBottom: 8 }, group: { overflow: 'hidden', paddingHorizontal: 13, borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }, row: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: 11 }, rowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }, icon: { width: 39, height: 39, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceStrong }, copy: { flex: 1, paddingVertical: 11 }, title: { color: colors.text, fontSize: 13, fontWeight: '800' }, description: { color: colors.textMuted, fontSize: 9, lineHeight: 13, marginTop: 3 },
-});
+const useStyles = makeStyles(() => ({
+  screen: { flex: 1, backgroundColor: colors.screen }, header: { minHeight: 84, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, backgroundColor: colors.canvasRaised }, back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }, heading: { color: colors.text, fontSize: 21, fontWeight: '900' }, headerMeta: { color: colors.textMuted, fontSize: 10, marginTop: 2 }, loader: { marginTop: 100 }, info: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: radii.lg, borderWidth: 1, borderColor: withAlpha(colors.gilid, 0.2), backgroundColor: withAlpha(colors.gilid, 0.06) }, infoText: { flex: 1, color: colors.textMuted, fontSize: 11, lineHeight: 17 }, groupTitle: { color: colors.textDim, fontSize: 9, fontWeight: '900', letterSpacing: 1.3, marginTop: 25, marginBottom: 8 }, group: { overflow: 'hidden', paddingHorizontal: 13, borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }, row: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: 11 }, rowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }, icon: { width: 39, height: 39, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceStrong }, copy: { flex: 1, paddingVertical: 11 }, title: { color: colors.text, fontSize: 13, fontWeight: '800' }, description: { color: colors.textMuted, fontSize: 9, lineHeight: 13, marginTop: 3 },
+}));

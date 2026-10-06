@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/auth/AuthProvider';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 
 // Shared building blocks for the admin screens, so every tool looks and
 // behaves the same. Screens pass already-translated strings.
@@ -21,6 +21,7 @@ export function useIsAdmin() {
 }
 
 export function AdminScreen({ title, subtitle, children, refreshing, onRefresh, right, scroll = true }: { title: string; subtitle?: string; children: ReactNode; refreshing?: boolean; onRefresh?: () => void; right?: ReactNode; scroll?: boolean }) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
   const isAdmin = useIsAdmin();
@@ -46,6 +47,7 @@ export function AdminScreen({ title, subtitle, children, refreshing, onRefresh, 
 }
 
 export function AdminSection({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
+  const styles = useStyles();
   return <View style={styles.sectionWrap}>
     <View style={styles.sectionHead}><Text style={styles.section}>{title.toUpperCase()}</Text>{right}</View>
     {children}
@@ -53,10 +55,12 @@ export function AdminSection({ title, children, right }: { title: string; childr
 }
 
 export function AdminCard({ children, style }: { children: ReactNode; style?: object }) {
+  const styles = useStyles();
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
 export function AdminRow({ title, subtitle, icon, badges, onPress, right, imageSlot }: { title: string; subtitle?: string; icon?: IconName; badges?: ReactNode; onPress?: () => void; right?: ReactNode; imageSlot?: ReactNode }) {
+  const styles = useStyles();
   const body = <>
     {imageSlot ?? (icon ? <View style={styles.rowIcon}><Ionicons name={icon} color={colors.text} size={20} /></View> : null)}
     <View style={styles.rowCopy}>
@@ -71,7 +75,8 @@ export function AdminRow({ title, subtitle, icon, badges, onPress, right, imageS
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger';
 export function AdminButton({ label, onPress, variant = 'secondary', disabled, busy, icon, compact }: { label: string; onPress: () => void; variant?: ButtonVariant; disabled?: boolean; busy?: boolean; icon?: IconName; compact?: boolean }) {
-  const textColor = variant === 'primary' ? colors.black : variant === 'danger' ? '#fecaca' : colors.text;
+  const styles = useStyles();
+  const textColor = variant === 'primary' ? colors.onText : variant === 'danger' ? colors.danger : colors.text;
   return <PressableScale disabled={disabled || busy} onPress={onPress} style={[styles.button, compact && styles.buttonCompact, variant === 'primary' && styles.buttonPrimary, variant === 'danger' && styles.buttonDanger, (disabled || busy) && styles.buttonDisabled]}>
     {busy ? <ActivityIndicator size="small" color={textColor} /> : icon ? <Ionicons name={icon} size={compact ? 15 : 17} color={textColor} /> : null}
     <Text numberOfLines={1} style={[styles.buttonText, compact && styles.buttonTextCompact, { color: textColor }]}>{label}</Text>
@@ -79,10 +84,12 @@ export function AdminButton({ label, onPress, variant = 'secondary', disabled, b
 }
 
 export function AdminButtons({ children }: { children: ReactNode }) {
+  const styles = useStyles();
   return <View style={styles.buttons}>{children}</View>;
 }
 
 export function AdminField({ label, value, onChangeText, placeholder, multiline, keyboardType, help, secure, autoCapitalize = 'sentences', editable = true }: { label: string; value: string; onChangeText: (value: string) => void; placeholder?: string; multiline?: boolean; keyboardType?: KeyboardTypeOptions; help?: string; secure?: boolean; autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters'; editable?: boolean }) {
+  const styles = useStyles();
   return <View style={styles.field}>
     <Text style={styles.label}>{label}</Text>
     <TextInput
@@ -107,6 +114,7 @@ export function AdminNumberField({ label, value, onChange, help, decimal }: { la
 }
 
 export function AdminToggle({ label, help, value, onChange, disabled }: { label: string; help?: string; value: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {
+  const styles = useStyles();
   return <View style={styles.toggle}>
     <View style={styles.rowCopy}><Text style={styles.rowTitle}>{label}</Text>{!!help && <Text style={styles.rowSubtitle}>{help}</Text>}</View>
     <Switch value={value} onValueChange={onChange} disabled={disabled} trackColor={{ false: colors.surfaceStrong, true: colors.accent }} thumbColor={colors.white} />
@@ -114,6 +122,7 @@ export function AdminToggle({ label, help, value, onChange, disabled }: { label:
 }
 
 export function AdminChips<T extends string>({ label, options, value, onChange }: { label?: string; options: { value: T; label: string }[]; value: T; onChange: (value: T) => void }) {
+  const styles = useStyles();
   return <View style={styles.field}>
     {!!label && <Text style={styles.label}>{label}</Text>}
     <View style={styles.chips}>
@@ -123,18 +132,21 @@ export function AdminChips<T extends string>({ label, options, value, onChange }
 }
 
 type Tone = 'neutral' | 'good' | 'warn' | 'bad' | 'info';
-const toneColors: Record<Tone, { bg: string; fg: string }> = {
-  neutral: { bg: 'rgba(255,255,255,.08)', fg: colors.textMuted },
-  good: { bg: 'rgba(52,211,153,.14)', fg: '#6ee7b7' },
-  warn: { bg: 'rgba(251,191,36,.14)', fg: '#fcd34d' },
-  bad: { bg: 'rgba(239,68,68,.16)', fg: '#fca5a5' },
-  info: { bg: 'rgba(34,211,238,.12)', fg: '#67e8f9' },
-};
+const toneColors = (): Record<Tone, { bg: string; fg: string }> => ({
+  neutral: { bg: withAlpha(colors.text, .08), fg: colors.textMuted },
+  good: { bg: withAlpha(colors.success, .14), fg: colors.success },
+  warn: { bg: withAlpha(colors.warning, .14), fg: colors.warning },
+  bad: { bg: withAlpha(colors.danger, .16), fg: colors.danger },
+  info: { bg: withAlpha(colors.gilid, .12), fg: colors.gilid },
+});
 export function AdminBadge({ label, tone = 'neutral' }: { label: string; tone?: Tone }) {
-  return <View style={[styles.badge, { backgroundColor: toneColors[tone].bg }]}><Text style={[styles.badgeText, { color: toneColors[tone].fg }]}>{label}</Text></View>;
+  const styles = useStyles();
+  const tones = toneColors();
+  return <View style={[styles.badge, { backgroundColor: tones[tone].bg }]}><Text style={[styles.badgeText, { color: tones[tone].fg }]}>{label}</Text></View>;
 }
 
 export function AdminProgress({ value, label }: { value: number; label?: string }) {
+  const styles = useStyles();
   const percent = Math.max(0, Math.min(100, value));
   return <View style={styles.progressWrap}>
     {!!label && <Text style={styles.help}>{label}</Text>}
@@ -143,20 +155,25 @@ export function AdminProgress({ value, label }: { value: number; label?: string 
 }
 
 export function AdminEmpty({ text }: { text: string }) {
+  const styles = useStyles();
   return <Text style={styles.empty}>{text}</Text>;
 }
 
 export function AdminLoading() {
+  const styles = useStyles();
   return <ActivityIndicator style={styles.loading} color={colors.accentBright} />;
 }
 
 export function AdminError({ error }: { error: unknown }) {
+  const styles = useStyles();
   if (!error) return null;
   return <View style={styles.error}><Ionicons name="alert-circle" color="#fca5a5" size={16} /><Text style={styles.errorText}>{error instanceof Error ? error.message : String(error)}</Text></View>;
 }
 
 export function AdminNotice({ text, tone = 'info' }: { text: string; tone?: Tone }) {
-  return <View style={[styles.notice, { backgroundColor: toneColors[tone].bg }]}><Text style={[styles.noticeText, { color: toneColors[tone].fg }]}>{text}</Text></View>;
+  const styles = useStyles();
+  const tones = toneColors();
+  return <View style={[styles.notice, { backgroundColor: tones[tone].bg }]}><Text style={[styles.noticeText, { color: tones[tone].fg }]}>{text}</Text></View>;
 }
 
 /** Ask before anything destructive; resolves after the action finishes or is cancelled. */
@@ -185,7 +202,7 @@ export function formatBytes(value?: number) {
   return `${(value / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
 }
 
-export const adminStyles = StyleSheet.create({
+const adminStylesFactory = () => StyleSheet.create({
   gap: { height: 12 },
   inlineRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   thumb: { width: 72, aspectRatio: 16 / 9, borderRadius: radii.sm, backgroundColor: colors.surfaceStrong },
@@ -196,8 +213,26 @@ export const adminStyles = StyleSheet.create({
   muted: { color: colors.textMuted, fontSize: 12, lineHeight: 17 },
 });
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.canvas, paddingHorizontal: 18 },
+/** Shared admin helper styles that follow the live theme. Prefer this hook in components. */
+export const useAdminStyles = makeStyles(adminStylesFactory);
+
+/**
+ * Backwards-compatible view of the same styles: each property is rebuilt from
+ * the live tokens when read, so reading it during render stays current.
+ */
+let adminStylesCache: { key: string; styles: ReturnType<typeof adminStylesFactory> } | null = null;
+const currentAdminStyles = () => {
+  const key = `${colors.surfaceStrong}|${colors.textMuted}|${colors.text}|${radii.sm}`;
+  if (!adminStylesCache || adminStylesCache.key !== key) adminStylesCache = { key, styles: adminStylesFactory() };
+  return adminStylesCache.styles;
+};
+export const adminStyles = {} as ReturnType<typeof adminStylesFactory>;
+(Object.keys(adminStylesFactory()) as (keyof typeof adminStyles)[]).forEach((key) => {
+  Object.defineProperty(adminStyles, key, { enumerable: true, get: () => currentAdminStyles()[key] });
+});
+
+const useStyles = makeStyles(() => ({
+  screen: { flex: 1, backgroundColor: colors.screen, paddingHorizontal: 18 },
   top: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 },
   topCopy: { flex: 1, minWidth: 0 },
   back: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
@@ -218,8 +253,8 @@ const styles = StyleSheet.create({
   buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   button: { minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 16, borderRadius: radii.pill, backgroundColor: colors.surfaceStrong },
   buttonCompact: { minHeight: 32, paddingHorizontal: 12 },
-  buttonPrimary: { backgroundColor: colors.white },
-  buttonDanger: { backgroundColor: 'rgba(127,29,29,.55)' },
+  buttonPrimary: { backgroundColor: colors.text },
+  buttonDanger: { backgroundColor: withAlpha(colors.danger, .14) },
   buttonDisabled: { opacity: .45 },
   buttonText: { fontSize: 13, fontWeight: '800' },
   buttonTextCompact: { fontSize: 12 },
@@ -232,16 +267,16 @@ const styles = StyleSheet.create({
   toggle: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   chip: { minHeight: 32, paddingHorizontal: 12, borderRadius: radii.pill, backgroundColor: colors.surfaceStrong, alignItems: 'center', justifyContent: 'center' },
-  chipActive: { backgroundColor: colors.white },
+  chipActive: { backgroundColor: colors.text },
   chipText: { color: colors.textMuted, fontSize: 12, fontWeight: '700' },
-  chipTextActive: { color: colors.black },
+  chipTextActive: { color: colors.onText },
   progressWrap: { marginTop: 10 },
   progressTrack: { height: 5, borderRadius: 3, backgroundColor: colors.surfaceStrong, overflow: 'hidden', marginTop: 4 },
   progressFill: { height: '100%', backgroundColor: colors.accentBright },
   empty: { color: colors.textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 28 },
   loading: { marginVertical: 28 },
-  error: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, padding: 12, borderRadius: radii.md, backgroundColor: 'rgba(239,68,68,.12)' },
-  errorText: { flex: 1, color: '#fca5a5', fontSize: 12, lineHeight: 17 },
+  error: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, padding: 12, borderRadius: radii.md, backgroundColor: withAlpha(colors.danger, .12) },
+  errorText: { flex: 1, color: colors.danger, fontSize: 12, lineHeight: 17 },
   notice: { marginTop: 12, padding: 12, borderRadius: radii.md },
   noticeText: { fontSize: 12, lineHeight: 17 },
-});
+}));

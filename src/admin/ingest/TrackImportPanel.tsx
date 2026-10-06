@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
-import { AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminField, AdminLoading, AdminNotice, AdminNumberField, AdminSection, AdminToggle, adminStyles, formatBytes } from '@/admin/ui';
+import { AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminField, AdminLoading, AdminNotice, AdminNumberField, AdminSection, AdminToggle, formatBytes, useAdminStyles } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 
 import { fetchSeriesEpisodes, importAudioTrack, importSubtitleTrack, ingestKeys, listAudioSources, listSubtitleSources, useIngestEpisodes, useIngestMovies, useIngestSeriesList } from './api';
 import { audioStreamLabel, bulkRowState, errorMessage, inferBulkRows, subtitleStreamLabel, type BulkTrackRow } from './helpers';
@@ -22,6 +22,8 @@ const jobStatusLabels: Record<string, string> = { queued: 'Queued…', processin
  * movies or episodes — one at a time or a whole season in bulk.
  */
 export function TrackImportPanel({ item, kind }: { item: MediaIngest; kind: Kind }) {
+  const styles = useStyles();
+  const adminStyles = useAdminStyles();
   const { t } = useI18n();
   const isAudio = kind === 'audio';
   const sources = useQuery<Source[]>({
@@ -160,6 +162,8 @@ function SingleImport({ item, isAudio, sources, streamLabel, runImport }: { item
 }
 
 function BulkImport({ isAudio, sources, streamLabel, runImport }: { isAudio: boolean; sources: Source[]; streamLabel: (stream: Stream) => string; runImport: ImportFn }) {
+  const styles = useStyles();
+  const adminStyles = useAdminStyles();
   const { t } = useI18n();
   const seriesList = useIngestSeriesList();
   const [seriesID, setSeriesID] = useState('');
@@ -251,7 +255,7 @@ function BulkImport({ isAudio, sources, streamLabel, runImport }: { isAudio: boo
       {rowsLoading ? <AdminLoading /> : !seriesID ? <AdminEmpty text={t('Choose a series to link its episodes.')} /> : !rows.length ? <AdminEmpty text={t('This series has no episodes.')} /> : rows.map((row) => {
         const rowSource = sources.find((entry) => entry.file_path === row.sourcePath);
         const locked = busy || row.status === 'done';
-        const stateColor = row.status === 'error' ? '#fca5a5' : row.status === 'done' ? colors.success : row.matchKind ? '#67e8f9' : colors.warning;
+        const stateColor = row.status === 'error' ? colors.danger : row.status === 'done' ? colors.success : row.matchKind ? '#67e8f9' : colors.warning;
         return <AdminCard key={row.targetId} style={!row.included ? styles.excluded : undefined}>
           <AdminToggle label={`S${row.seasonNumber} E${row.episodeNumber} · ${row.targetTitle}`} value={row.included} disabled={locked || !row.sourcePath} onChange={(value) => patchRow(row.targetId, { included: value })} />
           <Text style={[styles.state, { color: stateColor }]}>{bulkRowState(t, row)}</Text>
@@ -272,10 +276,10 @@ function BulkImport({ isAudio, sources, streamLabel, runImport }: { isAudio: boo
   </View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   center: { textAlign: 'center' },
   help: { marginBottom: 2 },
   excluded: { opacity: .6 },
   state: { fontSize: 11, fontWeight: '700', marginTop: 6 },
-  rowError: { color: '#fca5a5', fontSize: 12, marginTop: 6 },
-});
+  rowError: { color: colors.danger, fontSize: 12, marginTop: 6 },
+}));

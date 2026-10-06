@@ -1,15 +1,16 @@
 import { router } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
-import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminEmpty, AdminError, AdminLoading, AdminProgress, AdminScreen, adminStyles } from '@/admin/ui';
+import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminEmpty, AdminError, AdminLoading, AdminProgress, AdminScreen, useAdminStyles } from '@/admin/ui';
 import { useIngestList } from '@/admin/ingest/api';
 import { displayProgress, formatEta, formatSpeed, ingestStatusLabel, ingestTone } from '@/admin/ingest/helpers';
 import type { MediaIngest } from '@/admin/ingest/types';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 
 export default function MediaIngestsScreen() {
+  const styles = useStyles();
   const { t } = useI18n();
   const ingests = useIngestList();
   const items = ingests.data ?? [];
@@ -32,6 +33,8 @@ export default function MediaIngestsScreen() {
 }
 
 function IngestCard({ item }: { item: MediaIngest }) {
+  const styles = useStyles();
+  const adminStyles = useAdminStyles();
   const { t } = useI18n();
   const progress = displayProgress(item);
   const extra = [`${progress}%`, formatSpeed(item.download_speed), item.eta > 0 ? formatEta(item.eta) : ''].filter(Boolean).join(' · ');
@@ -52,10 +55,10 @@ function IngestCard({ item }: { item: MediaIngest }) {
   </PressableScale>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   list: { marginTop: 16 },
   copy: { flex: 1, minWidth: 0 },
   title: { color: colors.text, fontSize: 15, fontWeight: '800', marginBottom: 2 },
   gap: { marginTop: 6 },
-  error: { color: '#fca5a5', fontSize: 12, lineHeight: 17, marginTop: 6 },
-});
+  error: { color: colors.danger, fontSize: 12, lineHeight: 17, marginTop: 6 },
+}));

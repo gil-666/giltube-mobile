@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Text, TextInput, View } from 'react-native';
 
 import { AdminButton, AdminButtons, AdminCard, AdminChips, AdminError, AdminField, AdminNotice, AdminSection, AdminToggle, adminStyles, formatBytes } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 
 import { attachIngest, bulkAttachIngestSeries, ingestKeys, previewIngestSeries, useIngestChannels, useIngestSeriesList } from './api';
 import { canOpenAttach, canPreviewSeries, moveSeriesPreviewFile, normalizeSeriesPreview } from './helpers';
@@ -13,6 +13,7 @@ import type { MediaIngest, SeriesPreviewFile } from './types';
 
 /** Attach a finished download to a channel as a movie video, or bulk-attach a series pack. */
 export function AttachPanel({ item, onDone }: { item: MediaIngest; onDone: (message: string) => void }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const channels = useIngestChannels();
@@ -148,10 +149,10 @@ export function AttachPanel({ item, onDone }: { item: MediaIngest; onDone: (mess
   </View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   topGap: { marginTop: 8 },
   count: { marginBottom: 8 },
   episode: { color: colors.text, fontSize: 13, fontWeight: '900', minWidth: 58 },
   input: { flex: 1, minHeight: 38, borderRadius: radii.md, backgroundColor: colors.canvas, color: colors.text, fontSize: 13, paddingHorizontal: 10 },
   size: { alignSelf: 'center' },
-});
+}));

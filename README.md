@@ -2,7 +2,7 @@
 
 Native iOS and Android client for GilTube, built with React Native and Expo (SDK 57, React Native 0.86, New Architecture, Expo Router with typed routes, React Compiler).
 
-Current version: `0.9.27` in `package.json`; `app.json` / `android/app/build.gradle` are at `0.9.31` (Android `versionCode` 45).
+Current version: `0.9.33` (Android `versionCode` 47) in `package.json`, `app.json` and `android/app/build.gradle`.
 
 ## Features
 
@@ -35,7 +35,9 @@ Current version: `0.9.27` in `package.json`; `app.json` / `android/app/build.gra
 - Android App Links for `giltube.gilservers.com`, with a prompt to enable "Open by default"
 - in-app Play Store update prompt on Android (flexible updates via `sp-react-native-in-app-updates`)
 - English and Spanish (es-MX) UI, following the system language or an in-app choice
-- shared GilTube color, spacing, shape, and motion tokens
+- news panels from GilTube: Markdown announcements shown as a startup panel and/or as news notifications (push for loud ones), a news screen for `/news/<id>` links, call-to-action buttons that open native screens when possible, a "News and announcements" notification toggle, and an admin News screen
+- account themes shared with the website: GilTube's built-in themes plus your own and installed ones (Themes screen under You and App settings), applied live across the app including light themes, gradients, background images, corner styles and particle effects; theme share links open in the app. Themes are created and edited in the website editor; WebGL animated backgrounds and custom fonts are web-only and fall back to the theme's gradient and colors
+- live color, spacing, shape, and motion tokens (`src/theme/tokens.ts`); styles are built with `makeStyles`, which rebuilds them when the theme changes
 
 ## Requirements
 

@@ -7,7 +7,7 @@ import { opsAPI, type EnrollmentCode, type WorkerNode, type WorkerRelease } from
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminLoading, AdminNotice, AdminProgress, AdminScreen, AdminSection, AdminToggle, adminStyles, alertError, confirmAction, formatBytes, useIsAdmin } from '@/admin/ui';
 import { mediaOrigin } from '@/config/environment';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 
 const WORKERS_KEY = ['admin', 'ops', 'workers'] as const;
@@ -17,6 +17,7 @@ const archLabel = (arch: string) => arch === 'amd64' ? 'x64' : 'ARM64';
 const statusTone = (status: string) => status === 'online' ? 'good' as const : status === 'revoked' ? 'bad' as const : 'neutral' as const;
 
 export default function WorkersAdminScreen() {
+  const styles = useStyles();
   const { t } = useI18n();
   const isAdmin = useIsAdmin();
   const isFocused = useIsFocused();
@@ -51,10 +52,12 @@ export default function WorkersAdminScreen() {
 }
 
 function Stat({ label, value, color }: { label: string; value: number; color: string }) {
+  const styles = useStyles();
   return <View style={styles.stat}><Text style={[styles.statValue, { color }]}>{value}</Text><Text style={styles.statLabel}>{label.toUpperCase()}</Text></View>;
 }
 
 function WorkerCard({ worker, onChanged }: { worker: WorkerNode; onChanged: () => Promise<unknown> }) {
+  const styles = useStyles();
   const { t, relative } = useI18n();
   const action = useMutation({ mutationFn: (run: () => Promise<unknown>) => run(), onSettled: () => onChanged(), onError: alertError(t) });
   const busy = action.isPending;
@@ -121,10 +124,12 @@ function WorkerCard({ worker, onChanged }: { worker: WorkerNode; onChanged: () =
 }
 
 function Fact({ label, value }: { label: string; value: string }) {
+  const styles = useStyles();
   return <View style={styles.fact}><Text style={styles.factLabel}>{label}</Text><Text numberOfLines={2} style={styles.factValue}>{value}</Text></View>;
 }
 
 function EnrollmentCard({ enrollment, onClose }: { enrollment: EnrollmentCode; onClose: () => void }) {
+  const styles = useStyles();
   const { t, dateTime } = useI18n();
   const releases = useQuery({ queryKey: ['admin', 'ops', 'workers', 'releases'], queryFn: opsAPI.releases });
   const [platform, setPlatform] = useState('linux/amd64');
@@ -173,6 +178,7 @@ function EnrollmentCard({ enrollment, onClose }: { enrollment: EnrollmentCode; o
 }
 
 function ReleaseRow({ release, primary }: { release: WorkerRelease; primary?: boolean }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const url = resolveMediaURL(release.download_url || `/api/v1/worker-releases/download/${encodeURIComponent(release.filename)}`);
   return <View style={styles.release}>
@@ -185,7 +191,7 @@ function ReleaseRow({ release, primary }: { release: WorkerRelease; primary?: bo
   </View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   stats: { flexDirection: 'row', gap: 8, marginTop: 14 },
   stat: { flex: 1, borderRadius: radii.md, backgroundColor: colors.surface, paddingVertical: 12, paddingHorizontal: 10 },
   statValue: { fontSize: 22, fontWeight: '900' },
@@ -205,4 +211,4 @@ const styles = StyleSheet.create({
   releaseTitle: { color: colors.text, fontSize: 14, fontWeight: '800' },
   step: { flexDirection: 'row', gap: 10, paddingVertical: 4 },
   stepNumber: { color: colors.accentBright, fontSize: 13, fontWeight: '900', width: 14 },
-});
+}));

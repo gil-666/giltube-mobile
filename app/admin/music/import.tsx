@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Text } from 'react-native';
 
 import { musicAPI, useInvalidateMusic, useMusicCatalog } from '@/admin/music/api';
 import { MusicSelect, pickAudioFiles } from '@/admin/music/components';
@@ -8,12 +8,13 @@ import { errorMessage, inferredTrackTitle, isAllowedAudio, naturalCompare, nextT
 import { ImportTrackRow, type ImportItem } from '@/admin/music/ImportTrackRow';
 import { AdminButton, AdminButtons, AdminCard, AdminEmpty, AdminField, AdminLoading, AdminNotice, AdminNumberField, AdminProgress, AdminScreen, AdminSection, AdminToggle } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 
 // Bulk import: pick several audio files for one release; each becomes a
 // track (title from the file name) and its master is uploaded in order.
 
 export default function MusicImportScreen() {
+  const styles = useStyles();
   const { release: releaseParam } = useLocalSearchParams<{ release?: string }>();
   const { t } = useI18n();
   const catalog = useMusicCatalog();
@@ -126,6 +127,6 @@ export default function MusicImportScreen() {
   </AdminScreen>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   help: { color: colors.textMuted, fontSize: 12, lineHeight: 17, marginBottom: 4 },
-});
+}));

@@ -1,18 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { peopleAPI, peopleKeys, type AdminUser } from '@/admin/people/api';
 import { ModerationButtons, SearchField, StatusBadge, normalizedStatus, statusFilterOptions, useModeration, type StatusFilter } from '@/admin/people/shared';
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminLoading, AdminNotice, AdminScreen, adminStyles, alertError, confirmAction, useIsAdmin } from '@/admin/ui';
 import { useAuth } from '@/auth/AuthProvider';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 
 const PAGE = 40;
 
 export default function AdminUsersScreen() {
+  const styles = useStyles();
   const { t } = useI18n();
   const isAdmin = useIsAdmin();
   const queryClient = useQueryClient();
@@ -45,6 +46,7 @@ export default function AdminUsersScreen() {
 }
 
 function UserCard({ user, onChanged }: { user: AdminUser; onChanged: () => Promise<unknown> }) {
+  const styles = useStyles();
   const { t, compactNumber, dateTime } = useI18n();
   const { account } = useAuth();
   const moderation = useModeration();
@@ -88,11 +90,11 @@ function UserCard({ user, onChanged }: { user: AdminUser; onChanged: () => Promi
   </AdminCard>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   count: { color: colors.textDim, fontSize: 11, fontWeight: '700', marginTop: 14, marginBottom: 8 },
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   headCopy: { flex: 1, minWidth: 0 },
   name: { color: colors.text, fontSize: 15, fontWeight: '800' },
   badges: { flexDirection: 'row', gap: 5 },
   stats: { color: colors.text, fontSize: 12, marginTop: 8, marginBottom: 2 },
-});
+}));

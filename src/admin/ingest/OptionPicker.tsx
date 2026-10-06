@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 
 export type PickerOption<T extends string | number> = { value: T; label: string; subtitle?: string; disabled?: boolean };
 
@@ -14,6 +14,7 @@ export type PickerOption<T extends string | number> = { value: T; label: string;
  * a sheet with the options (searchable once the list gets long).
  */
 export function OptionPicker<T extends string | number>({ label, value, options, onChange, placeholder, disabled, compact }: { label?: string; value: T; options: PickerOption<T>[]; onChange: (value: T) => void; placeholder: string; disabled?: boolean; compact?: boolean }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
@@ -60,7 +61,7 @@ export function OptionPicker<T extends string | number>({ label, value, options,
   </View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   wrap: { marginTop: 12 },
   compactWrap: { marginTop: 8 },
   label: { color: colors.textMuted, fontSize: 11, fontWeight: '800', marginBottom: 6 },
@@ -81,4 +82,4 @@ const styles = StyleSheet.create({
   optionActive: { color: colors.accentBright },
   optionSub: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
   empty: { color: colors.textMuted, textAlign: 'center', paddingVertical: 24 },
-});
+}));

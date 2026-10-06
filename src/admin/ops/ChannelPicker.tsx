@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { AdminError, AdminField, AdminLoading } from '@/admin/ui';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 
 import { opsAPI } from './api';
 
@@ -17,6 +17,7 @@ const VISIBLE = 8;
  * channel" (value ''), e.g. "use the mapped channel".
  */
 export function ChannelPicker({ label, value, onChange, emptyLabel, disabled }: { label: string; value: string; onChange: (channelID: string) => void; emptyLabel?: string; disabled?: boolean }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const [search, setSearch] = useState('');
   const channels = useQuery({ queryKey: ['admin', 'ops', 'channels'], queryFn: opsAPI.channels, staleTime: 60_000 });
@@ -45,6 +46,7 @@ export function ChannelPicker({ label, value, onChange, emptyLabel, disabled }: 
 }
 
 function Option({ label, detail, active, onPress }: { label: string; detail?: string; active: boolean; onPress: () => void }) {
+  const styles = useStyles();
   return <PressableScale onPress={onPress} style={[styles.option, active && styles.optionActive]}>
     <View style={styles.optionCopy}>
       <Text numberOfLines={1} style={styles.optionText}>{label}</Text>
@@ -54,7 +56,7 @@ function Option({ label, detail, active, onPress }: { label: string; detail?: st
   </PressableScale>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   wrap: { marginTop: 12 },
   label: { color: colors.textMuted, fontSize: 11, fontWeight: '800', marginBottom: 4 },
   current: { color: colors.text, fontSize: 14, fontWeight: '800' },
@@ -65,4 +67,4 @@ const styles = StyleSheet.create({
   optionCopy: { flex: 1, minWidth: 0 },
   optionText: { color: colors.text, fontSize: 13, fontWeight: '700' },
   optionDetail: { color: colors.textDim, fontSize: 11, marginTop: 1 },
-});
+}));

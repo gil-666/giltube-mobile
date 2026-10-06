@@ -2,14 +2,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { AdminButton, AdminButtons, AdminCard, AdminChips, AdminError, AdminField, AdminNotice, AdminNumberField, AdminProgress, AdminScreen, AdminSection, adminStyles, formatBytes } from '@/admin/ui';
 import { createIngest, createUploadedIngest, ingestKeys } from '@/admin/ingest/api';
 import type { IngestMediaType } from '@/admin/ingest/types';
 import { uploadFileChunks } from '@/api/upload';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 
 type Mode = 'torrent' | 'upload';
 type UploadRow = { key: string; uri: string; name: string; size: number; progress: number; status: string };
@@ -18,6 +18,7 @@ type UploadRow = { key: string; uri: string; name: string; size: number; progres
 const UPLOAD_EXTENSIONS = new Set(['.mp4', '.mkv', '.webm', '.mov', '.avi', '.m4v', '.mpg', '.mpeg', '.wmv', '.mka', '.aac', '.mp3', '.wav', '.flac', '.m4a', '.ogg', '.opus', '.ac3', '.eac3', '.dts', '.ts', '.m2ts', '.srt', '.ass', '.vtt']);
 
 export default function NewMediaIngestScreen() {
+  const styles = useStyles();
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>('torrent');
@@ -139,7 +140,7 @@ export default function NewMediaIngestScreen() {
   </AdminScreen>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   copy: { flex: 1, minWidth: 0 },
   fileName: { color: colors.text, fontSize: 14, fontWeight: '700', marginBottom: 2 },
-});
+}));

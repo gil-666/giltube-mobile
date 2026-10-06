@@ -9,7 +9,7 @@ import { AdminButton, AdminEmpty, AdminError, AdminLoading, AdminRow, adminStyle
 import { apiRequest } from '@/api/client';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import type { SearchResponse, Video } from '@/types/api';
 import { resolveMediaURL } from '@/utils/media';
 
@@ -30,6 +30,7 @@ async function loadVideos(query: string): Promise<Item[]> {
 
 /** Full-screen chooser for an already uploaded video (trailer or episode source). */
 export function VideoPicker({ visible, title, subtitle, actionLabel, onClose, onPick }: { visible: boolean; title: string; subtitle?: string; actionLabel: string; onClose: () => void; onPick: (video: PickedVideo) => void }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
@@ -69,7 +70,7 @@ export function VideoPicker({ visible, title, subtitle, actionLabel, onClose, on
   </Modal>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   screen: { flex: 1, backgroundColor: colors.canvas, paddingHorizontal: 18 },
   top: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
   topCopy: { flex: 1, minWidth: 0 },
@@ -77,4 +78,4 @@ const styles = StyleSheet.create({
   subtitle: { color: colors.textMuted, fontSize: 12, marginTop: 3 },
   close: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   search: { minHeight: 46, borderRadius: radii.pill, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: colors.surface, color: colors.text, fontSize: 14, paddingHorizontal: 16, marginBottom: 4 },
-});
+}));

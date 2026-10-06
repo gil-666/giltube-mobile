@@ -1,15 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
 import { isWatchPartyEndedError, usePlayer } from '@/player/PlayerProvider';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 
 export default function WatchPartyResolver() {
+  const styles = useStyles();
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const { t } = useI18n();
   const { status } = useAuth();
@@ -40,13 +41,14 @@ export default function WatchPartyResolver() {
 }
 
 function Loading({ label }: { label: string }) {
+  const styles = useStyles();
   return <View style={styles.center}><ActivityIndicator color={colors.accentBright} size="large" /><Text style={styles.body}>{label}</Text></View>;
 }
 
-const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, backgroundColor: colors.canvas },
+const useStyles = makeStyles(() => ({
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, backgroundColor: colors.screen },
   title: { color: colors.text, fontSize: 21, fontWeight: '900', marginTop: 12 },
   body: { color: colors.textMuted, textAlign: 'center', lineHeight: 20, marginTop: 9 },
   button: { height: 46, justifyContent: 'center', paddingHorizontal: 24, marginTop: 22, borderRadius: radii.pill, backgroundColor: colors.accent },
-  buttonText: { color: colors.white, fontWeight: '900' },
-});
+  buttonText: { color: colors.onAccent, fontWeight: '900' },
+}));

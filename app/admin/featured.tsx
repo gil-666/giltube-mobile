@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { formatLocalDateTime, opsAPI, parseLocalDateTime, type FeaturedCandidate, type FeaturedItem, type FeaturedPayload, type FeaturedType } from '@/admin/ops/api';
-import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminField, AdminLoading, AdminNotice, AdminRow, AdminScreen, AdminSection, AdminToggle, adminStyles, alertError, confirmAction, useIsAdmin } from '@/admin/ui';
+import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminField, AdminLoading, AdminNotice, AdminRow, AdminScreen, AdminSection, AdminToggle, alertError, confirmAction, useAdminStyles, useIsAdmin } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 
 const FEATURED_KEY = ['admin', 'ops', 'featured'] as const;
@@ -16,6 +16,8 @@ type Form = { content_type: FeaturedType; content_id: string; header: string; de
 const blank = (): Form => ({ content_type: 'video', content_id: '', header: '', description: '', action_text: '', slot: '1', enabled: true, notifications_enabled: false, scheduled_for: '' });
 
 export default function FeaturedAdminScreen() {
+  const styles = useStyles();
+  const adminStyles = useAdminStyles();
   const { t } = useI18n();
   const isAdmin = useIsAdmin();
   const client = useQueryClient();
@@ -117,6 +119,7 @@ export default function FeaturedAdminScreen() {
 }
 
 function CandidateRow({ candidate, onPress, active }: { candidate: FeaturedCandidate; onPress?: () => void; active?: boolean }) {
+  const adminStyles = useAdminStyles();
   return <AdminRow
     title={candidate.title}
     subtitle={candidate.channel_name}
@@ -126,10 +129,10 @@ function CandidateRow({ candidate, onPress, active }: { candidate: FeaturedCandi
   />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   label: { color: colors.textMuted, fontSize: 11, fontWeight: '800', marginTop: 12, marginBottom: 2 },
   hero: { width: '100%', aspectRatio: 16 / 9, borderRadius: radii.md, backgroundColor: colors.surfaceStrong, marginBottom: 10 },
   title: { color: colors.text, fontSize: 16, fontWeight: '900', marginTop: 4 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 8 },
   editing: { borderColor: colors.accentBright },
-});
+}));

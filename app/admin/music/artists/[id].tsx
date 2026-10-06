@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 
 import { musicAPI, useInvalidateMusic, useMusicCatalog, useMusicChannels } from '@/admin/music/api';
 import { MusicArtwork, MusicSelect } from '@/admin/music/components';
@@ -8,11 +8,12 @@ import { errorMessage, releaseTypeLabel, statusLabel, statusTone } from '@/admin
 import type { LocalMusicFile, MusicArtistInput } from '@/admin/music/types';
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminEmpty, AdminError, AdminField, AdminLoading, AdminRow, AdminScreen, AdminSection, AdminToggle, confirmAction, pickFile } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 
 const emptyForm: MusicArtistInput = { name: '', bio: '', primary_channel_id: '', verified: false };
 
 export default function MusicArtistScreen() {
+  const styles = useStyles();
   const { id = 'new' } = useLocalSearchParams<{ id: string }>();
   const isNew = id === 'new';
   const { t } = useI18n();
@@ -123,8 +124,8 @@ export default function MusicArtistScreen() {
   </AdminScreen>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatarCopy: { flex: 1, minWidth: 0 },
   muted: { color: colors.textMuted, fontSize: 12, lineHeight: 17 },
-});
+}));

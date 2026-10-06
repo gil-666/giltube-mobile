@@ -3,20 +3,22 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { AddEpisodeForm } from './AddEpisodeForm';
 import { episodeDetailsFrom, invalidateSeries, seriesAPI, seriesKeys, sortEpisodes, type AdminEpisode, type AdminSeries, type MetadataEpisode } from './api';
 import { APIError } from '@/api/client';
-import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminEmpty, AdminError, AdminField, AdminNotice, AdminRow, AdminSection, adminStyles, confirmAction } from '@/admin/ui';
+import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminEmpty, AdminError, AdminField, AdminNotice, AdminRow, AdminSection, confirmAction, useAdminStyles } from '@/admin/ui';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 
 type Slot = { id: string; seasonNumber: number; episodeNumber: number };
 
 export function EpisodesSection({ series, episodes: rawEpisodes, metadataEpisodes }: { series: AdminSeries; episodes: AdminEpisode[]; metadataEpisodes: MetadataEpisode[] }) {
+  const styles = useStyles();
+  const adminStyles = useAdminStyles();
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const episodes = useMemo(() => sortEpisodes(rawEpisodes), [rawEpisodes]);
@@ -212,10 +214,10 @@ export function EpisodesSection({ series, episodes: rawEpisodes, metadataEpisode
   </>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   help: { marginTop: 8 },
   topGap: { marginTop: 12 },
   moves: { flexDirection: 'row', gap: 6 },
   move: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceStrong },
   moveDisabled: { opacity: .3 },
-});
+}));

@@ -299,7 +299,7 @@ export interface PlaylistsResponse {
 
 export interface NotificationItem {
   id: string;
-  type: 'comment_video' | 'reply_comment' | 'like_video' | 'like_comment' | 'live_started' | 'new_video' | 'video_ready' | 'watch_party_invite' | 'watch_party_host' | 'new_subscriber' | 'featured_content';
+  type: 'comment_video' | 'reply_comment' | 'like_video' | 'like_comment' | 'live_started' | 'new_video' | 'video_ready' | 'watch_party_invite' | 'watch_party_host' | 'new_subscriber' | 'featured_content' | 'news';
   is_read: boolean;
   created_at: string;
   actor_channel: Channel;

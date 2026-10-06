@@ -5,10 +5,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import { moviesAPI, type MetadataResult } from './api';
 import { AdminButton, AdminButtons, AdminCard, AdminEmpty, AdminError, AdminField } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 
 /** TMDB lookup; applying a result fills the form and pins the TMDB id. */
 export function MetadataSearch({ initialQuery, onApply }: { initialQuery: string; onApply: (result: MetadataResult) => void }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<MetadataResult[] | null>(null);
@@ -50,11 +51,11 @@ export function MetadataSearch({ initialQuery, onApply }: { initialQuery: string
   </AdminCard>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   result: { flexDirection: 'row', gap: 12, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, marginTop: 10 },
   poster: { width: 64, aspectRatio: 2 / 3, borderRadius: radii.sm, backgroundColor: colors.surfaceStrong },
   copy: { flex: 1, minWidth: 0 },
   title: { color: colors.text, fontSize: 14, fontWeight: '800' },
   meta: { color: colors.textMuted, fontSize: 11, marginTop: 3 },
   synopsis: { color: colors.textDim, fontSize: 11, lineHeight: 15, marginTop: 4 },
-});
+}));

@@ -1,12 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { useAuth } from '@/auth/AuthProvider';
 import { PressableScale } from '@/components/PressableScale';
-import { colors } from '@/theme/tokens';
+import { colors, makeStyles } from '@/theme/tokens';
 import { useI18n } from '@/i18n';
 
 export default function AuthCallbackScreen() {
+  const styles = useStyles();
   const { t } = useI18n();
   const { completeSignIn } = useAuth();
   const params = useLocalSearchParams<{ code?: string | string[]; state?: string | string[]; error?: string | string[] }>();
@@ -36,11 +37,11 @@ export default function AuthCallbackScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.canvas, alignItems: 'center', justifyContent: 'center' },
+const useStyles = makeStyles(() => ({
+  screen: { flex: 1, backgroundColor: colors.screen, alignItems: 'center', justifyContent: 'center' },
   title: { color: colors.text, fontSize: 20, fontWeight: '800', marginTop: 18 },
   body: { color: colors.textMuted, fontSize: 14, marginTop: 6 },
   error: { color: colors.accentBright, maxWidth: 330, textAlign: 'center', lineHeight: 20 },
   button: { marginTop: 22, minHeight: 48, paddingHorizontal: 24, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.gilid },
   buttonText: { color: colors.black, fontSize: 14, fontWeight: '900' },
-});
+}));

@@ -14,7 +14,7 @@ import { useActiveChannel } from '@/channels/ChannelProvider';
 import { PressableScale } from '@/components/PressableScale';
 import { useDownloads } from '@/downloads/DownloadProvider';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import type { LiveStream, Video, WatchPartyEvent, WatchPartySnapshot } from '@/types/api';
 import { useAppSettings } from '@/settings/AppSettingsProvider';
 import { isLocalHLSManifest, loadHLSQualities, pinnedQualityManifest, probeHDRMaster, type QualityOption } from '@/utils/hls';
@@ -663,6 +663,7 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
 }
 
 function PlayerToast({ message }: { message: string }) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   return (
     <Animated.View
@@ -678,6 +679,7 @@ function PlayerToast({ message }: { message: string }) {
 }
 
 function MiniPlayer() {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
   const { account } = useAuth();
@@ -733,7 +735,7 @@ function MiniPlayer() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   toast: {
     position: 'absolute',
     zIndex: 200,
@@ -748,7 +750,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(24,24,27,.98)',
+    backgroundColor: withAlpha(colors.surface, .98),
     shadowColor: colors.black,
     shadowOpacity: 0.45,
     shadowRadius: 14,
@@ -767,7 +769,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(24,24,27,.98)',
+    backgroundColor: withAlpha(colors.surface, .98),
     shadowColor: colors.black,
     shadowOpacity: 0.6,
     shadowRadius: 18,
@@ -781,7 +783,7 @@ const styles = StyleSheet.create({
   partyDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.accentBright },
   partyLabelText: { color: colors.accentBright, fontSize: 7, fontWeight: '900', letterSpacing: .8 },
   iconButton: { width: 42, height: 48, alignItems: 'center', justifyContent: 'center' },
-});
+}));
 
 export function usePlayer() {
   const context = useContext(PlayerContext);

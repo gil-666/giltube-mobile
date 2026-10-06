@@ -1,9 +1,9 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { AdminChips, AdminField } from './ui';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import { contentDescriptorText } from '@/utils/contentRating';
 
 // Admin model of a movie/series content rating. Ratings resolve from TMDB on
@@ -43,6 +43,7 @@ export function appendContentRating(form: FormData, input?: ContentRatingInput |
 const DESCRIPTOR_LABELS: Record<string, string> = { violence: 'Violence', sex: 'Sex', nudity: 'Nudity', language: 'Strong language', drugs: 'Drugs', fear: 'Frightening scenes', discrimination: 'Discrimination' };
 
 export function ContentRatingEditor({ value, onChange }: { value: ContentRatingInput; onChange: (value: ContentRatingInput) => void }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const update = (patch: Partial<ContentRatingInput>) => onChange({ ...value, ...patch, dirty: true });
   const toggle = (key: string) => {
@@ -65,12 +66,12 @@ export function ContentRatingEditor({ value, onChange }: { value: ContentRatingI
   </View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   summary: { color: colors.textMuted, fontSize: 12, marginTop: 8 },
   label: { color: colors.textMuted, fontSize: 11, fontWeight: '800', marginTop: 12, marginBottom: 6 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   chip: { minHeight: 32, paddingHorizontal: 12, borderRadius: radii.pill, backgroundColor: colors.surfaceStrong, alignItems: 'center', justifyContent: 'center' },
-  chipActive: { backgroundColor: colors.white },
+  chipActive: { backgroundColor: colors.text },
   chipText: { color: colors.textMuted, fontSize: 12, fontWeight: '700' },
-  chipTextActive: { color: colors.black },
-});
+  chipTextActive: { color: colors.onText },
+}));

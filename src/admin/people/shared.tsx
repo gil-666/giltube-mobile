@@ -6,7 +6,7 @@ import { StyleSheet, TextInput, View } from 'react-native';
 
 import { AdminBadge, AdminButton, AdminRow, adminStyles, alertError, confirmAction } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 
 import { peopleAPI, type AdminVideo, type ModerationAction } from './api';
@@ -55,6 +55,7 @@ export function VideoStatusBadge({ status }: { status?: string }) {
 }
 
 export function SearchField({ value, onChangeText, placeholder }: { value: string; onChangeText: (value: string) => void; placeholder: string }) {
+  const styles = useStyles();
   return <View style={styles.search}>
     <Ionicons name="search" size={17} color={colors.textDim} />
     <TextInput
@@ -73,6 +74,7 @@ export function SearchField({ value, onChangeText, placeholder }: { value: strin
 }
 
 export function VideoListRow({ video, onPress, showChannel }: { video: AdminVideo; onPress: () => void; showChannel?: boolean }) {
+  const styles = useStyles();
   const { t, compactNumber } = useI18n();
   const thumbnail = resolveMediaURL(video.thumbnail_url);
   const stats = t('{views} views · {likes} likes · {comments} comments', { views: compactNumber(video.views), likes: compactNumber(video.likes), comments: compactNumber(video.comments_count) });
@@ -145,8 +147,8 @@ export function ModerationButtons({ kind, id, name, status, isProtected, moderat
   </>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   search: { minHeight: 46, flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, paddingHorizontal: 13, borderRadius: radii.md, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: colors.surface },
   searchInput: { flex: 1, color: colors.text, fontSize: 14, paddingVertical: 10 },
   thumbEmpty: { alignItems: 'center', justifyContent: 'center' },
-});
+}));

@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { PressableScale } from './PressableScale';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 
 export function PlaceholderScreen({ icon, title, body, actionLabel, onAction }: {
   icon: keyof typeof Ionicons.glyphMap;
@@ -11,6 +11,7 @@ export function PlaceholderScreen({ icon, title, body, actionLabel, onAction }: 
   actionLabel?: string;
   onAction?: () => void;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.screen}>
       <Animated.View entering={FadeInDown.duration(420).springify()} style={styles.card}>
@@ -27,12 +28,12 @@ export function PlaceholderScreen({ icon, title, body, actionLabel, onAction }: 
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.canvas, justifyContent: 'center', padding: 24 },
+const useStyles = makeStyles(() => ({
+  screen: { flex: 1, backgroundColor: colors.screen, justifyContent: 'center', padding: 24 },
   card: { borderRadius: radii.xl, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: 24 },
-  icon: { width: 52, height: 52, borderRadius: 18, backgroundColor: 'rgba(239,68,68,.12)', alignItems: 'center', justifyContent: 'center' },
+  icon: { width: 52, height: 52, borderRadius: 18, backgroundColor: withAlpha(colors.accentBright, .12), alignItems: 'center', justifyContent: 'center' },
   title: { color: colors.text, fontSize: 26, fontWeight: '900', marginTop: 20 },
   body: { color: colors.textMuted, fontSize: 15, lineHeight: 22, marginTop: 8 },
   action: { height: 48, marginTop: 22, borderRadius: radii.lg, backgroundColor: colors.text, alignItems: 'center', justifyContent: 'center' },
-  actionText: { color: colors.black, fontSize: 14, fontWeight: '900' },
-});
+  actionText: { color: colors.onText, fontSize: 14, fontWeight: '900' },
+}));

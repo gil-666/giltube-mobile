@@ -6,7 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { formatDuration } from './api';
 import { AdminButton, AdminButtons } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 
 /**
@@ -15,6 +15,7 @@ import { resolveMediaURL } from '@/utils/media';
  * Without `onChange` it only previews a range (intro suggestion review).
  */
 export function IntroPlayer({ hlsPath, start, end, onChange }: { hlsPath: string; start: number; end: number; onChange?: (start: number, end: number) => void }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const player = useVideoPlayer(resolveMediaURL(hlsPath), (instance) => {
     instance.timeUpdateEventInterval = 0.2;
@@ -61,13 +62,14 @@ export function IntroPlayer({ hlsPath, start, end, onChange }: { hlsPath: string
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
+  const styles = useStyles();
   return <View style={styles.stat}><Text style={styles.statLabel}>{label}</Text><Text style={styles.statValue}>{value}</Text></View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   video: { width: '100%', aspectRatio: 16 / 9, borderRadius: radii.md, overflow: 'hidden', backgroundColor: colors.black },
   stats: { flexDirection: 'row', gap: 8, marginTop: 10 },
   stat: { flex: 1, borderRadius: radii.md, backgroundColor: colors.surfaceStrong, padding: 10 },
   statLabel: { color: colors.textDim, fontSize: 10, fontWeight: '800' },
   statValue: { color: colors.text, fontSize: 15, fontWeight: '900', fontFamily: 'monospace', marginTop: 3 },
-});
+}));

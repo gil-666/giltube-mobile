@@ -12,13 +12,14 @@ import { PressableScale } from '@/components/PressableScale';
 import { SwipeSheet } from '@/components/SwipeSheet';
 import { useI18n } from '@/i18n';
 import { usePlayer } from '@/player/PlayerProvider';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import type { SearchResult, WatchPartyMessage } from '@/types/api';
 import { resolveMediaURL } from '@/utils/media';
 
 type PartySheet = 'queue' | 'people' | null;
 
 export function WatchPartyPanel() {
+  const styles = useStyles();
   const { account } = useAuth();
   const { t, number } = useI18n();
   const { activeChannelID } = useActiveChannel();
@@ -107,6 +108,7 @@ export function WatchPartyPanel() {
 }
 
 export function WatchPartyChat({ overlay = false, onHide }: { overlay?: boolean; onHide?: () => void }) {
+  const styles = useStyles();
   const { account } = useAuth();
   const { t, number } = useI18n();
   const { activeChannelID } = useActiveChannel();
@@ -156,30 +158,34 @@ export function WatchPartyChat({ overlay = false, onHide }: { overlay?: boolean;
 }
 
 function PartyAction({ icon, label, danger, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; danger?: boolean; onPress: () => void }) {
+  const styles = useStyles();
   return <PressableScale onPress={onPress} style={styles.action}><Ionicons name={icon} size={20} color={danger ? colors.accentBright : colors.text} /><Text style={[styles.actionText, danger && { color: colors.accentBright }]}>{label}</Text></PressableScale>;
 }
 
 function Avatar({ name, uri }: { name: string; uri?: string }) {
+  const styles = useStyles();
   return uri ? <Image source={resolveMediaURL(uri)} style={styles.avatar} contentFit="cover" /> : <View style={styles.avatarFallback}><Text style={styles.avatarLetter}>{name.charAt(0).toUpperCase()}</Text></View>;
 }
 
 function ResultRow({ result, icon, onPress }: { result: SearchResult; icon: keyof typeof Ionicons.glyphMap; onPress: () => void }) {
+  const styles = useStyles();
   const { t } = useI18n(); return <PressableScale onPress={onPress} style={styles.row}><Image source={resolveMediaURL(result.avatar || result.thumbnail || '')} style={result.type === 'channel' ? styles.avatar : styles.thumb} contentFit="cover" /><View style={styles.rowCopy}><Text numberOfLines={2} style={styles.rowTitle}>{result.name || result.title}</Text><Text numberOfLines={1} style={styles.rowMeta}>{result.type === 'channel' ? t('GilTube member') : result.channel || t('Video')}</Text></View><Ionicons name={icon} size={20} color={colors.accentBright} /></PressableScale>;
 }
 
 function ChatMessage({ item, mine, compact = false }: { item: WatchPartyMessage; mine: boolean; compact?: boolean }) {
+  const styles = useStyles();
   const { t, dateTime } = useI18n(); return <View style={[styles.message, compact && styles.messageCompact, mine && styles.messageMine]}><View style={styles.messageTop}>{!compact && <Avatar name={item.actor.name} uri={item.actor.avatar_url} />}<Text style={[styles.messageName, compact && styles.messageNameCompact]}>{mine ? t('You') : item.actor.name}</Text><Text style={styles.messageTime}>{dateTime(item.created_at, { hour: '2-digit', minute: '2-digit' })}</Text></View>{!!item.message && <Text style={styles.messageBody}>{item.message}</Text>}{!!item.reaction && <Text style={styles.bigReaction}>{item.reaction}</Text>}{!!item.gif_url && <Image source={item.gif_url} style={[styles.messageGif, compact && styles.messageGifCompact]} contentFit="cover" />}</View>;
 }
 
-const styles = StyleSheet.create({
-  card: { marginTop: 0, marginHorizontal: 14, marginBottom: 16, borderWidth: 1, borderColor: '#5A2026', borderRadius: radii.lg, backgroundColor: '#211114', overflow: 'hidden' },
+const useStyles = makeStyles(() => ({
+  card: { marginTop: 0, marginHorizontal: 14, marginBottom: 16, borderWidth: 1, borderColor: withAlpha(colors.accentBright, .3), borderRadius: radii.lg, backgroundColor: withAlpha(colors.accentBright, .1), overflow: 'hidden' },
   heading: { paddingHorizontal: 15, paddingTop: 14 }, live: { flexDirection: 'row', alignItems: 'center', gap: 6 }, dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.accentBright }, liveText: { color: colors.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1 }, title: { color: colors.text, fontSize: 16, fontWeight: '900', marginTop: 5 }, subtitle: { color: colors.textMuted, fontSize: 10, marginTop: 4 },
   actions: { flexDirection: 'row', paddingHorizontal: 5, marginTop: 10 }, action: { flex: 1, minWidth: 55, height: 58, alignItems: 'center', justifyContent: 'center', gap: 5 }, actionText: { color: colors.text, fontSize: 9, fontWeight: '800' },
-  syncRow: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#5A2026' }, syncText: { flex: 1, color: colors.textMuted, fontSize: 10 }, change: { padding: 8 }, changeText: { color: colors.accentBright, fontSize: 10, fontWeight: '900' },
-  chatSurface: { marginHorizontal: 14, marginBottom: 18, padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: radii.lg, backgroundColor: colors.surface }, chatSurfaceOverlay: { flex: 1, marginHorizontal: 0, marginBottom: 0, borderColor: 'rgba(255,255,255,.14)', backgroundColor: 'rgba(13,13,16,.86)' }, chatHeader: { minHeight: 42, flexDirection: 'row', alignItems: 'center', paddingBottom: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }, chatHeaderIcon: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(239,68,68,.12)' }, chatHeaderCopy: { flex: 1, marginLeft: 9 }, chatTitle: { color: colors.text, fontSize: 14, fontWeight: '900' }, chatSubtitle: { color: colors.textMuted, fontSize: 9, marginTop: 2 }, chatHide: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: colors.surfaceStrong }, chatMessagesInline: { minHeight: 120, maxHeight: 320 }, chatMessagesOverlay: { flex: 1 }, chatMessagesContent: { flexGrow: 1, justifyContent: 'flex-end', paddingTop: 12 }, chatEmpty: { flex: 1, minHeight: 110, alignItems: 'center', justifyContent: 'center' },
+  syncRow: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: withAlpha(colors.accentBright, .3) }, syncText: { flex: 1, color: colors.textMuted, fontSize: 10 }, change: { padding: 8 }, changeText: { color: colors.accentBright, fontSize: 10, fontWeight: '900' },
+  chatSurface: { marginHorizontal: 14, marginBottom: 18, padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: radii.lg, backgroundColor: colors.surface }, chatSurfaceOverlay: { flex: 1, marginHorizontal: 0, marginBottom: 0, borderColor: withAlpha(colors.text, .14), backgroundColor: withAlpha(colors.canvas, .86) }, chatHeader: { minHeight: 42, flexDirection: 'row', alignItems: 'center', paddingBottom: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }, chatHeaderIcon: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: withAlpha(colors.accentBright, .12) }, chatHeaderCopy: { flex: 1, marginLeft: 9 }, chatTitle: { color: colors.text, fontSize: 14, fontWeight: '900' }, chatSubtitle: { color: colors.textMuted, fontSize: 9, marginTop: 2 }, chatHide: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: colors.surfaceStrong }, chatMessagesInline: { minHeight: 120, maxHeight: 320 }, chatMessagesOverlay: { flex: 1 }, chatMessagesContent: { flexGrow: 1, justifyContent: 'flex-end', paddingTop: 12 }, chatEmpty: { flex: 1, minHeight: 110, alignItems: 'center', justifyContent: 'center' },
   empty: { color: colors.textMuted, textAlign: 'center', paddingVertical: 10 }, reactions: { flexDirection: 'row', gap: 8, marginTop: 10 }, reaction: { width: 42, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: radii.pill, backgroundColor: colors.surfaceStrong }, reactionText: { fontSize: 17 },
   composer: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 12 }, gif: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 21, backgroundColor: colors.surfaceStrong }, gifText: { color: colors.text, fontSize: 9, fontWeight: '900' }, input: { flex: 1, height: 43, paddingHorizontal: 13, borderRadius: 22, backgroundColor: colors.surfaceStrong, color: colors.text }, send: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   search: { height: 46, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, marginBottom: 8, borderRadius: radii.md, backgroundColor: colors.surfaceStrong }, searchInput: { flex: 1, height: 46, color: colors.text }, sectionLabel: { color: colors.textDim, fontSize: 9, fontWeight: '900', letterSpacing: 1, marginTop: 9, marginBottom: 8 },
   row: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }, rowCopy: { flex: 1, minWidth: 0 }, rowTitle: { color: colors.text, fontSize: 12, fontWeight: '800' }, rowMeta: { color: colors.textMuted, fontSize: 9, marginTop: 3 }, rowAction: { width: 35, height: 42, alignItems: 'center', justifyContent: 'center' }, thumb: { width: 82, aspectRatio: 16 / 9, borderRadius: radii.sm, backgroundColor: colors.surfaceStrong }, person: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }, avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.surfaceStrong }, avatarFallback: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentDark }, avatarLetter: { color: colors.white, fontWeight: '900' },
-  message: { alignSelf: 'flex-start', maxWidth: '90%', padding: 10, marginBottom: 9, borderRadius: 14, borderTopLeftRadius: 4, backgroundColor: colors.surfaceStrong }, messageCompact: { paddingHorizontal: 9, paddingVertical: 7, marginBottom: 7, backgroundColor: 'rgba(50,50,55,.92)' }, messageMine: { alignSelf: 'flex-end', borderTopLeftRadius: 14, borderTopRightRadius: 4, backgroundColor: '#3B171B' }, messageTop: { minWidth: 150, flexDirection: 'row', alignItems: 'center' }, messageName: { flex: 1, color: colors.textMuted, fontSize: 9, fontWeight: '800', marginLeft: 7 }, messageNameCompact: { marginLeft: 0 }, messageTime: { color: colors.textDim, fontSize: 8, marginLeft: 10 }, messageBody: { color: colors.text, fontSize: 13, lineHeight: 18, marginTop: 7 }, bigReaction: { fontSize: 27, marginTop: 5 }, messageGif: { width: 210, aspectRatio: 1.3, borderRadius: radii.md, marginTop: 8, backgroundColor: colors.canvasRaised }, messageGifCompact: { width: 180 },
-});
+  message: { alignSelf: 'flex-start', maxWidth: '90%', padding: 10, marginBottom: 9, borderRadius: 14, borderTopLeftRadius: 4, backgroundColor: colors.surfaceStrong }, messageCompact: { paddingHorizontal: 9, paddingVertical: 7, marginBottom: 7, backgroundColor: withAlpha(colors.surfaceStrong, .92) }, messageMine: { alignSelf: 'flex-end', borderTopLeftRadius: 14, borderTopRightRadius: 4, backgroundColor: withAlpha(colors.accentBright, .18) }, messageTop: { minWidth: 150, flexDirection: 'row', alignItems: 'center' }, messageName: { flex: 1, color: colors.textMuted, fontSize: 9, fontWeight: '800', marginLeft: 7 }, messageNameCompact: { marginLeft: 0 }, messageTime: { color: colors.textDim, fontSize: 8, marginLeft: 10 }, messageBody: { color: colors.text, fontSize: 13, lineHeight: 18, marginTop: 7 }, bigReaction: { fontSize: 27, marginTop: 5 }, messageGif: { width: 210, aspectRatio: 1.3, borderRadius: radii.md, marginTop: 8, backgroundColor: colors.canvasRaised }, messageGifCompact: { width: 180 },
+}));

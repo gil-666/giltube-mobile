@@ -6,11 +6,12 @@ import Animated, { FadeInRight } from 'react-native-reanimated';
 
 import { PressableScale } from './PressableScale';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import type { RelatedMedia, Video } from '@/types/api';
 import { resolveMediaURL } from '@/utils/media';
 
 export function VideoCard({ video, index = 0, progress = 0 }: { video: Video; index?: number; progress?: number }) {
+  const styles = useStyles();
   const { t, compactNumber } = useI18n();
   // Push (even from a watch screen) so Back returns to the previous video.
   const openVideo = () => router.push({ pathname: '/video/[id]', params: { id: video.id } });
@@ -24,7 +25,7 @@ export function VideoCard({ video, index = 0, progress = 0 }: { video: Video; in
       >
         <View style={styles.imageWrap}><Image source={resolveMediaURL(video.thumbnail_url)} style={styles.image} contentFit="cover" transition={180} cachePolicy="memory-disk" />{progress > 0 && <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.min(100, Math.max(0, progress))}%` }]} /></View>}</View>
         <Text numberOfLines={2} style={styles.title}>{video.title}</Text>
-        <View style={styles.metaRow}><Text numberOfLines={1} style={styles.channel}>{video.channel?.name || 'GilTube'}</Text>{video.channel?.verified && <Ionicons name="checkmark-circle" color={colors.white} size={13} />}<Text style={styles.meta}>· {compactNumber(video.views)} {t(video.views === 1 ? 'view' : 'views')}</Text></View>
+        <View style={styles.metaRow}><Text numberOfLines={1} style={styles.channel}>{video.channel?.name || 'GilTube'}</Text>{video.channel?.verified && <Ionicons name="checkmark-circle" color={colors.text} size={13} />}<Text style={styles.meta}>· {compactNumber(video.views)} {t(video.views === 1 ? 'view' : 'views')}</Text></View>
       </PressableScale>
     </Animated.View>
   );
@@ -32,6 +33,7 @@ export function VideoCard({ video, index = 0, progress = 0 }: { video: Video; in
 
 // A movie or a whole series in a video rail; opens its detail screen.
 export function RelatedMediaCard({ media, index = 0 }: { media: RelatedMedia; index?: number }) {
+  const styles = useStyles();
   const { t } = useI18n();
   const isSeries = media.kind === 'series';
   const open = () => router.push(isSeries ? { pathname: '/series/[id]', params: { id: media.id } } : { pathname: '/movies/[id]', params: { id: media.id } });
@@ -51,7 +53,7 @@ export function RelatedMediaCard({ media, index = 0 }: { media: RelatedMedia; in
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   card: { width: 238 },
   kindBadge: { position: 'absolute', top: 8, left: 8, borderRadius: 5, backgroundColor: 'rgba(12,12,14,.82)', paddingHorizontal: 6, paddingVertical: 2 },
   kindBadgeText: { color: '#f2f2f4', fontSize: 11, fontWeight: '700' },
@@ -63,4 +65,4 @@ const styles = StyleSheet.create({
   progressTrack: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 4, backgroundColor: 'rgba(255,255,255,.25)' }, progressFill: { height: '100%', backgroundColor: colors.accentBright },
   title: { color: colors.text, fontSize: 15, lineHeight: 20, fontWeight: '700', marginTop: 10 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }, channel: { color: colors.textMuted, fontSize: 12, maxWidth: 140 }, meta: { color: colors.textMuted, fontSize: 12 },
-});
+}));

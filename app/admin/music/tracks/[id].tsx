@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { musicAPI, useInvalidateMusic, useMusicCatalog } from '@/admin/music/api';
 import { MusicArtwork, MusicSelect, MusicVideoCard, MusicVideoPicker, pickAudioFiles } from '@/admin/music/components';
@@ -8,13 +8,14 @@ import { audioFormatLabel, formatDuration, isAllowedAudio, lyricsStatusLabel, ly
 import type { LocalMusicFile, MusicTrackInput } from '@/admin/music/types';
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminEmpty, AdminError, AdminField, AdminLoading, AdminNotice, AdminNumberField, AdminProgress, AdminScreen, AdminSection, AdminToggle, confirmAction, formatBytes } from '@/admin/ui';
 import { useI18n } from '@/i18n';
-import { colors, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 
 type VideoChoice = { id: string; title: string; thumbnail: string; channel?: string };
 
 const emptyForm = (releaseID = ''): MusicTrackInput => ({ release_id: releaseID, title: '', disc_number: 1, track_number: 1, duration_seconds: 0, isrc: '', explicit: false, language: '' });
 
 export default function MusicTrackScreen() {
+  const styles = useStyles();
   const { id = 'new', release: releaseParam } = useLocalSearchParams<{ id: string; release?: string }>();
   const isNew = id === 'new';
   const { t, dateTime } = useI18n();
@@ -203,7 +204,7 @@ export default function MusicTrackScreen() {
   </AdminScreen>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   badges: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   pair: { flexDirection: 'row', gap: 10 },
@@ -213,4 +214,4 @@ const styles = StyleSheet.create({
   warn: { color: colors.warning, fontSize: 13, fontWeight: '700' },
   help: { color: colors.textDim, fontSize: 11, lineHeight: 15, marginTop: 8 },
   lyrics: { marginTop: 10, padding: 12, borderRadius: radii.md, backgroundColor: colors.canvas, color: colors.textMuted, fontSize: 12, lineHeight: 18, fontFamily: 'monospace' },
-});
+}));
