@@ -3,6 +3,7 @@ import { File } from 'expo-file-system';
 import { apiRequest } from './client';
 import type {
   Account,
+  RelatedMedia,
   AuthSession,
   Category,
   Channel,
@@ -117,6 +118,7 @@ export const giltubeAPI = {
   searchSuggestions: (query: string, limit = 10) =>
     apiRequest<{ suggestions: SearchResult[] }>(`/search/suggest?q=${encodeURIComponent(query)}&limit=${limit}`),
   relatedVideos: (id: string, limit = 10) => apiRequest<Video[]>(`/videos/${encodeURIComponent(id)}/related?limit=${limit}`),
+  relatedMedia: (id: string, limit = 4) => apiRequest<RelatedMedia[]>(`/videos/${encodeURIComponent(id)}/related-media?limit=${limit}`),
   publicWatchParties: () => apiRequest<PublicWatchParty[]>('/watch-parties/public'),
   activeWatchParty: () => apiRequest<{ party: WatchPartySnapshot | null }>('/watch-parties/active'),
   watchParty: (id: string) => apiRequest<WatchPartySnapshot>(`/watch-parties/${encodeURIComponent(id)}`),

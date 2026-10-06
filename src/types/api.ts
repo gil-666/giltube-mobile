@@ -333,6 +333,28 @@ export interface MediaCapabilities {
   surround?: boolean;
 }
 
+// US rating from TMDB (or set by an admin) plus content descriptor keys:
+// violence, sex, nudity, language, drugs, fear, discrimination.
+export interface ContentRating {
+  rating: string;
+  descriptors: string[];
+  source?: string;
+}
+
+export interface RelatedMedia {
+  kind: 'movie' | 'series';
+  id: string;
+  slug: string;
+  title: string;
+  genre: string;
+  poster_url: string;
+  backdrop_url: string;
+  release_year?: number;
+  seasons?: number;
+  episode_count?: number;
+  content_rating?: ContentRating;
+}
+
 export interface Movie {
   id: string;
   title: string;
@@ -349,8 +371,11 @@ export interface Movie {
   channel_id: string;
   is_featured: boolean;
   release_year: number;
+  explicit?: boolean;
+  content_warning?: boolean;
   video?: Video;
   media_capabilities?: MediaCapabilities;
+  content_rating?: ContentRating;
 }
 
 export interface MovieCatalog {
@@ -369,6 +394,7 @@ export interface SeriesEpisode {
   synopsis: string;
   intro_start_seconds: number;
   intro_end_seconds: number;
+  content_warning?: boolean;
   video: Video;
 }
 
@@ -389,8 +415,10 @@ export interface Series {
   channel_id: string;
   is_featured: boolean;
   episode_count: number;
+  explicit?: boolean;
   first_episode?: SeriesEpisode;
   media_capabilities?: MediaCapabilities;
+  content_rating?: ContentRating;
 }
 
 export interface SeriesCatalog {

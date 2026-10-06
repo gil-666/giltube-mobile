@@ -7,7 +7,7 @@ import Animated, { FadeInRight } from 'react-native-reanimated';
 import { PressableScale } from './PressableScale';
 import { useI18n } from '@/i18n';
 import { colors, radii } from '@/theme/tokens';
-import type { Video } from '@/types/api';
+import type { RelatedMedia, Video } from '@/types/api';
 import { resolveMediaURL } from '@/utils/media';
 
 export function VideoCard({ video, index = 0, progress = 0 }: { video: Video; index?: number; progress?: number }) {
@@ -30,8 +30,32 @@ export function VideoCard({ video, index = 0, progress = 0 }: { video: Video; in
   );
 }
 
+// A movie or a whole series in a video rail; opens its detail screen.
+export function RelatedMediaCard({ media, index = 0 }: { media: RelatedMedia; index?: number }) {
+  const { t } = useI18n();
+  const isSeries = media.kind === 'series';
+  const open = () => router.push(isSeries ? { pathname: '/series/[id]', params: { id: media.id } } : { pathname: '/movies/[id]', params: { id: media.id } });
+  const count = isSeries ? (media.seasons && media.seasons > 1 ? media.seasons : media.episode_count || 0) : 0;
+  const detail = isSeries
+    ? `${count} ${t(media.seasons && media.seasons > 1 ? 'seasons' : count === 1 ? 'episode' : 'episodes')}`
+    : media.release_year ? String(media.release_year) : '';
+  const meta = [detail, media.content_rating?.rating].filter(Boolean).join(' · ');
+  return (
+    <Animated.View entering={FadeInRight.delay(Math.min(index, 6) * 55).duration(360)}>
+      <PressableScale accessibilityRole="button" accessibilityLabel={media.title} onPress={open} style={styles.card}>
+        <View style={styles.imageWrap}><Image source={resolveMediaURL(media.backdrop_url || media.poster_url)} style={styles.image} contentFit="cover" transition={180} cachePolicy="memory-disk" /><View style={styles.kindBadge}><Text style={styles.kindBadgeText}>{t(isSeries ? 'Series' : 'Movie')}</Text></View></View>
+        <Text numberOfLines={2} style={styles.title}>{media.title}</Text>
+        {!!meta && <Text numberOfLines={1} style={[styles.meta, styles.mediaMeta]}>{meta}</Text>}
+      </PressableScale>
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
   card: { width: 238 },
+  kindBadge: { position: 'absolute', top: 8, left: 8, borderRadius: 5, backgroundColor: 'rgba(12,12,14,.82)', paddingHorizontal: 6, paddingVertical: 2 },
+  kindBadgeText: { color: '#f2f2f4', fontSize: 11, fontWeight: '700' },
+  mediaMeta: { marginTop: 4 },
   imageWrap: { width: 238, aspectRatio: 16 / 9, overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.surfaceStrong, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
   image: {
     width: '100%', height: '100%',

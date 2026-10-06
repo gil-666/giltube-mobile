@@ -3,6 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { useAppSettings } from '@/settings/AppSettingsProvider';
 
 import { esMX } from './es-MX';
+import { adminEsMX } from './admin';
 
 export type SupportedLocale = 'en-US' | 'es-MX';
 type Values = Record<string, string | number>;
@@ -43,7 +44,7 @@ export function useI18n() {
   const { settings } = useAppSettings();
   const locale = useMemo<SupportedLocale>(() => settings.language === 'system' ? systemLocale() : settings.language, [settings.language]);
   const t = useCallback((source: string, values?: Values) => {
-    let result = locale === 'es-MX' ? esMX[source] || source : source;
+    let result = locale === 'es-MX' ? esMX[source] || adminEsMX[source] || source : source;
     if (values) Object.entries(values).forEach(([key, value]) => { result = result.replaceAll(`{${key}}`, String(value)); });
     return result;
   }, [locale]);

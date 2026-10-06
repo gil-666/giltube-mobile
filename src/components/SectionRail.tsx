@@ -1,10 +1,21 @@
 import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { VideoCard } from './VideoCard';
+import { RelatedMediaCard, VideoCard } from './VideoCard';
 import { colors } from '@/theme/tokens';
-import type { Video } from '@/types/api';
+import type { RelatedMedia, Video } from '@/types/api';
 
-export function SectionRail({ title, subtitle, videos, progressByVideoID }: { title: string; subtitle?: string; videos: Video[]; progressByVideoID?: Record<string, number> }) {
-  if (!videos?.length) return null;
+type RailItem = { key: string; video?: Video; media?: RelatedMedia };
+
+// Movies and whole series can be woven into a video rail: every third slot,
+// starting at the front when mediaFirst is set.
+function railItems(videos: Video[], media: RelatedMedia[] = [], mediaFirst = false): RailItem[] {
+  const items: RailItem[] = videos.map((video) => ({ key: video.id, video }));
+  const start = mediaFirst ? 0 : 1;
+  media.forEach((item, index) => items.splice(Math.min(start + index * 3, items.length), 0, { key: `${item.kind}:${item.id}`, media: item }));
+  return items;
+}
+
+export function SectionRail({ title, subtitle, videos, media, mediaFirst, progressByVideoID }: { title: string; subtitle?: string; videos: Video[]; media?: RelatedMedia[]; mediaFirst?: boolean; progressByVideoID?: Record<string, number> }) {
+  if (!videos?.length && !media?.length) return null;
   return (
     <View style={styles.section}>
       <View style={styles.heading}>
@@ -13,9 +24,9 @@ export function SectionRail({ title, subtitle, videos, progressByVideoID }: { ti
       </View>
       <FlatList
         horizontal
-        data={videos}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => <VideoCard video={item} index={index} progress={progressByVideoID?.[item.id]} />}
+        data={railItems(videos || [], media, mediaFirst)}
+        keyExtractor={(item) => item.key}
+        renderItem={({ item, index }) => item.media ? <RelatedMediaCard media={item.media} index={index} /> : <VideoCard video={item.video!} index={index} progress={progressByVideoID?.[item.video!.id]} />}
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         showsHorizontalScrollIndicator={false}

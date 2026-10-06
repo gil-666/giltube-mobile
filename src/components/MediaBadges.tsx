@@ -3,17 +3,23 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { useI18n } from '@/i18n';
 import { colors, radii } from '@/theme/tokens';
-import type { MediaCapabilities } from '@/types/api';
+import type { ContentRating, MediaCapabilities } from '@/types/api';
+import { contentDescriptorText } from '@/utils/contentRating';
 
-// Quality, HDR and 5.1 surround chips for movie and series detail screens.
-// Each chip only appears when the content actually has it.
-export function MediaBadges({ capabilities }: { capabilities?: MediaCapabilities }) {
+// 18+, rating, quality, HDR and 5.1 surround chips for movie and series
+// detail screens. Each chip only appears when the content actually has it.
+export function MediaBadges({ capabilities, rating, explicit }: { capabilities?: MediaCapabilities; rating?: ContentRating; explicit?: boolean }) {
   const { t } = useI18n();
-  if (!capabilities || (!capabilities.max_quality && !capabilities.hdr && !capabilities.surround)) return null;
+  const hasRating = !!rating?.rating;
+  if (!explicit && !hasRating && (!capabilities || (!capabilities.max_quality && !capabilities.hdr && !capabilities.surround))) return null;
+  const descriptors = hasRating ? contentDescriptorText(rating, t) : '';
   return <View style={styles.row}>
-    {!!capabilities.max_quality && <View style={styles.quality}><Ionicons name="sparkles-outline" color={colors.accentBright} size={16} /><Text style={styles.qualityText}>{t('Up to')} {capabilities.max_quality}</Text></View>}
-    {!!capabilities.hdr && <View accessibilityLabel={t('HDR (high dynamic range)')} style={[styles.chip, styles.hdr]}><Text style={[styles.chipText, styles.hdrText]}>HDR</Text></View>}
-    {!!capabilities.surround && <View accessibilityLabel={t('5.1 surround sound')} style={[styles.chip, styles.surround]}><Ionicons name="volume-high-outline" color="#ddd6fe" size={14} /><Text style={[styles.chipText, styles.surroundText]}>5.1</Text></View>}
+    {!!explicit && <View accessibilityLabel={t('18+ explicit')} style={[styles.chip, styles.explicit]}><Text style={[styles.chipText, styles.explicitText]}>18+</Text></View>}
+    {hasRating && <View style={[styles.chip, styles.rating]}><Text style={[styles.chipText, styles.ratingText]}>{rating!.rating}</Text></View>}
+    {!!capabilities?.max_quality && <View style={styles.quality}><Ionicons name="sparkles-outline" color={colors.accentBright} size={16} /><Text style={styles.qualityText}>{t('Up to')} {capabilities!.max_quality}</Text></View>}
+    {!!capabilities?.hdr && <View accessibilityLabel={t('HDR (high dynamic range)')} style={[styles.chip, styles.hdr]}><Text style={[styles.chipText, styles.hdrText]}>HDR</Text></View>}
+    {!!capabilities?.surround && <View accessibilityLabel={t('5.1 surround sound')} style={[styles.chip, styles.surround]}><Ionicons name="volume-high-outline" color="#ddd6fe" size={14} /><Text style={[styles.chipText, styles.surroundText]}>5.1</Text></View>}
+    {!!descriptors && <Text style={styles.descriptors}>{descriptors}</Text>}
   </View>;
 }
 
@@ -27,4 +33,9 @@ const styles = StyleSheet.create({
   hdrText: { color: '#fef9c3' },
   surround: { backgroundColor: 'rgba(76,29,149,.76)', borderColor: 'rgba(167,139,250,.65)' },
   surroundText: { color: '#ede9fe' },
+  explicit: { backgroundColor: 'rgba(127,29,29,.8)', borderColor: 'rgba(248,113,113,.7)' },
+  explicitText: { color: '#fee2e2' },
+  rating: { backgroundColor: 'rgba(0,0,0,.35)', borderColor: 'rgba(255,255,255,.55)' },
+  ratingText: { color: colors.white },
+  descriptors: { alignSelf: 'center', color: colors.textMuted, fontSize: 12 },
 });

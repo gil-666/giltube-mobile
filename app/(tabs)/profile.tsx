@@ -39,7 +39,7 @@ export default function ProfileScreen() {
       <Menu icon="radio-outline" label={t('Go live')} onPress={() => router.push('/go-live')} />
       <Menu icon="people-outline" label={t('Create and manage channels')} onPress={() => router.push('/channels/manage')} />
       <Menu icon="speedometer-outline" label={t('Creator dashboard')} onPress={() => router.push('/dashboard')} />
-      {account?.user_type === 'admin' && <Menu icon="shield-checkmark-outline" label={t('Admin console')} onPress={() => web('/admin')} />}
+      {account?.user_type === 'admin' && <Menu icon="shield-checkmark-outline" label={t('Admin console')} onPress={() => router.push('/admin')} />}
       <Text style={styles.section}>{t('EXPLORE')}</Text>
       <Menu icon="musical-notes-outline" label={t('GilTube Music')} onPress={() => web('/music')} />
       <Menu icon="film-outline" label={t('Movies')} onPress={() => router.push('/movies')} />

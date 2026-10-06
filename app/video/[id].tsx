@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { giltubeAPI } from '@/api/giltube';
 import { useAuth } from '@/auth/AuthProvider';
 import { useActiveChannel } from '@/channels/ChannelProvider';
+import { ContentRatingCard, type ContentWarningKind } from '@/components/ContentRatingCard';
 import { GiphyPicker } from '@/components/GiphyPicker';
 import { PressableScale } from '@/components/PressableScale';
 import { SectionRail } from '@/components/SectionRail';
@@ -32,6 +33,10 @@ import { loadHLSQualities } from '@/utils/hls';
 import { isResumable } from '@/utils/watchProgress';
 import type { Comment } from '@/types/api';
 import { WatchPartyChat, WatchPartyPanel } from '@/watch-parties/WatchPartyPanel';
+
+// Videos and series whose 18+ notice was confirmed in this app session, so a
+// binge does not stop at every episode.
+const explicitAcceptedKeys = new Set<string>();
 
 export default function VideoScreen() {
   const { id, comment: focusedCommentID = '', party: partyID = '', skipIntro: skipIntroParam = '', startOver: startOverParam = '' } = useLocalSearchParams<{ id: string; comment?: string; party?: string; skipIntro?: string; startOver?: string }>(); const pathname = usePathname(); const insets = useSafeAreaInsets(); const queryClient = useQueryClient();
@@ -51,6 +56,7 @@ export default function VideoScreen() {
   const videoQuery = useQuery({ queryKey: ['video', id], queryFn: () => giltubeAPI.video(id), enabled: !!id, retry: 1 });
   const video = videoQuery.data || (activeVideo?.id === id ? activeVideo : null);
   const related = useQuery({ queryKey: ['related', id], queryFn: () => giltubeAPI.relatedVideos(id, 12), enabled: !!id });
+  const relatedMedia = useQuery({ queryKey: ['related-media', id], queryFn: () => giltubeAPI.relatedMedia(id, 4), enabled: !!id, retry: false });
   const seriesContext = useQuery({ queryKey: ['series-context', id], queryFn: () => giltubeAPI.seriesContext(id), enabled: !!id, retry: false });
   const movieContext = useQuery({ queryKey: ['movie-context', id], queryFn: () => giltubeAPI.movieContext(id), enabled: !!id, retry: false });
   const seriesTrailerContext = useQuery({ queryKey: ['series-trailer-context', id], queryFn: () => giltubeAPI.seriesTrailerContext(id), enabled: !!id, retry: false });
@@ -92,6 +98,16 @@ export default function VideoScreen() {
     return rootOrdered.map((item) => prioritizeCommentTree(item, focusedCommentID));
   }, [comments.data, focusedCommentID]);
 
+  // 18+ notice: playback (and the playback intro) waits until it is confirmed.
+  // Episodes wait for their series context so a confirmed series never flashes it.
+  const [explicitAccepted, setExplicitAccepted] = useState(() => explicitAcceptedKeys.has(id));
+  const explicitSeriesID = seriesContext.data?.series.id || '';
+  const explicitRelevant = !!video?.explicit && !partyID && !explicitAccepted && !explicitAcceptedKeys.has(id);
+  const explicitGate = explicitRelevant && seriesContext.isFetched && !(explicitSeriesID && explicitAcceptedKeys.has(explicitSeriesID));
+  const holdPlayback = !video || explicitGate || (explicitRelevant && !seriesContext.isFetched);
+  const holdPlaybackRef = useRef(holdPlayback);
+  useEffect(() => { holdPlaybackRef.current = holdPlayback; }, [holdPlayback]);
+
   // Playback intro: a short GilTube clip before movies and episodes, played by
   // its own player on top while the content loads paused underneath, so the
   // content is buffered by the time the intro ends. Skipped when resuming, in
@@ -108,7 +124,7 @@ export default function VideoScreen() {
     const intro = introQuery.data;
     return resuming || !intro?.play || !intro.url || getDownload(id) ? 'skip' : 'play';
   }, [getDownload, id, introQuery.data, introQuery.isFetched, progress.data?.progress, progress.isFetched, settings.resumePlayback, signedIn, startOverParam]);
-  const introState: 'pending' | 'playing' | 'done' = introFinished || introDecision === 'skip' ? 'done' : introDecision === 'play' ? 'playing' : 'pending';
+  const introState: 'pending' | 'playing' | 'done' = introFinished || introDecision === 'skip' ? 'done' : introDecision === 'play' && !holdPlayback ? 'playing' : 'pending';
   const introStateRef = useRef(introState);
   const previousIntroStateRef = useRef(introState);
   // The empty intro player can emit playToEnd/statusChange before anything is
@@ -145,7 +161,7 @@ export default function VideoScreen() {
       introPlayer.pause();
       void introPlayer.replaceAsync(null).catch(() => undefined);
       // Still loading? The provider consults shouldAutoplay once the source is ready.
-      if (activeVideoIDRef.current === id && !player.playing) player.play();
+      if (activeVideoIDRef.current === id && !player.playing && !holdPlaybackRef.current) player.play();
     }
   }, [finishIntro, id, introPlayer, introQuery.data?.url, introState, player]);
   useEventListener(introPlayer, 'playToEnd', () => { if (introLoadedRef.current) finishIntro(); });
@@ -178,7 +194,7 @@ export default function VideoScreen() {
   useEffect(() => {
     if (partyID || !isCurrentWatchRoute || !video || activeVideo?.id === video.id) return;
     if (lastPositionRef.current > 2) pendingSeekRef.current = lastPositionRef.current;
-    void play(video, undefined, { shouldAutoplay: () => introStateRef.current === 'done' }).catch((error) => setPlayerError({ id: video.id, message: error instanceof Error ? error.message : 'Unable to play this video.' }));
+    void play(video, undefined, { shouldAutoplay: () => introStateRef.current === 'done' && !holdPlaybackRef.current }).catch((error) => setPlayerError({ id: video.id, message: error instanceof Error ? error.message : 'Unable to play this video.' }));
   }, [activeVideo?.id, isCurrentWatchRoute, partyID, play, video]);
   useEffect(() => {
     if (!partyID || status !== 'signedIn' || watchParty?.party.id === partyID) return;
@@ -234,6 +250,20 @@ export default function VideoScreen() {
   }, [activeVideo?.id, id, introState, partyID, player, showingPlayer, signedIn]);
   useEffect(() => { if (id) void giltubeAPI.incrementView(id).catch(() => undefined); }, [id]);
   const leavePlayer = useCallback(() => { if (router.canGoBack()) router.back(); else router.replace('/(tabs)'); }, []);
+  // Content can start under the notice (resume skips the intro): keep it paused,
+  // and start it once the notice is gone.
+  useEffect(() => { if (explicitGate && playingChange?.isPlaying && activeVideo?.id === id) player.pause(); }, [activeVideo?.id, explicitGate, id, player, playingChange?.isPlaying]);
+  const previousHoldRef = useRef(holdPlayback);
+  useEffect(() => {
+    const wasHeld = previousHoldRef.current;
+    previousHoldRef.current = holdPlayback;
+    if (wasHeld && !holdPlayback && introStateRef.current === 'done' && activeVideoIDRef.current === id && !player.playing) player.play();
+  }, [holdPlayback, id, player]);
+  const acceptExplicit = useCallback(() => {
+    explicitAcceptedKeys.add(id);
+    if (explicitSeriesID) explicitAcceptedKeys.add(explicitSeriesID);
+    setExplicitAccepted(true);
+  }, [explicitSeriesID, id]);
   const handleMinimize = useCallback(() => { minimize(); leavePlayer(); }, [leavePlayer, minimize]);
   const handleDismiss = useCallback(() => { if (isWatchParty) { handleMinimize(); return; } dismiss(); if (router.canDismiss()) router.dismissAll(); else router.replace('/(tabs)'); }, [dismiss, handleMinimize, isWatchParty]);
   const revealPlayerChrome = useCallback(() => {
@@ -267,6 +297,11 @@ export default function VideoScreen() {
   const share = () => { if (!video) return; void Share.share({ title: video.title, message: `${video.title}\nhttps://giltube.gilservers.com/video/${video.id}`, url: `https://giltube.gilservers.com/video/${video.id}` }); };
   const episode = seriesContext.data?.episodes[seriesContext.data.current_index];
   const nextEpisode = seriesContext.data?.episodes[seriesContext.data.current_index + 1];
+  // Only the feature itself gets the rating card, never its trailer.
+  const playingMovie = movieContext.data?.movie?.video_id === id ? movieContext.data.movie : undefined;
+  const playingRating = playingMovie?.content_rating || (episode ? seriesContext.data?.series.content_rating : undefined);
+  const playingWarning: ContentWarningKind = playingMovie?.content_warning ? 'movie' : episode?.content_warning ? 'episode' : '';
+  const ratingCardActive = showingPlayer && introState === 'done' && !holdPlayback && !!playingChange?.isPlaying;
   const showSkipIntro = !!episode && episode.intro_end_seconds > episode.intro_start_seconds && currentTime >= Math.max(0, episode.intro_start_seconds - 1) && currentTime < episode.intro_end_seconds;
   const togglePlayback = () => {
     if (isWatchParty) {
@@ -311,6 +346,7 @@ export default function VideoScreen() {
       {showingPlayer ? <VideoView key={`${isFullscreen ? 'landscape' : 'portrait'}-player-${surfaceKey}-${isPlayingHDR ? 'hdr' : 'sdr'}`} ref={videoViewRef} player={player} onTouchStart={revealPlayerChrome} style={StyleSheet.absoluteFill} nativeControls={false} fullscreenOptions={{ enable: false }} allowsPictureInPicture={settings.pipEnabled} startsPictureInPictureAutomatically={settings.pipEnabled} contentFit="contain" surfaceType={isPlayingHDR ? 'surfaceView' : 'textureView'} /> : <View style={styles.playerLoading}><ActivityIndicator color={colors.accentBright} />{playerError?.id === id && <Text style={styles.playerError}>{playerError.message}</Text>}</View>}
       {showPlaybackLoading && <View pointerEvents="none" style={styles.buffering}><View style={styles.bufferingDisc}><ActivityIndicator color={colors.white} size="large" /></View></View>}
       {!!seekFeedback && <View pointerEvents="none" style={[styles.seekFeedback, seekFeedback.direction < 0 ? styles.seekFeedbackBack : styles.seekFeedbackForward]}><Ionicons name={seekFeedback.direction < 0 ? 'play-back' : 'play-forward'} color={colors.white} size={24} /><Text style={styles.seekFeedbackText}>{seekFeedback.seconds} {t('seconds')}</Text></View>}
+      {(!!playingRating?.rating || !!playingWarning) && <ContentRatingCard key={id} rating={playingRating} warning={playingWarning} active={ratingCardActive} fullscreen={isFullscreen} />}
       {skipIntroActive && <Animated.View pointerEvents={skipIntroVisible ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, skipIntroMotion]}><PressableScale disabled={isWatchParty && !canControlParty} onPress={skipIntro} style={[styles.skipIntro, isWatchParty && !canControlParty && { opacity: .45 }]}><Text style={styles.skipIntroText}>{t('Skip intro')}</Text><Ionicons name="play-skip-forward" color={colors.white} size={16} /></PressableScale></Animated.View>}
       <Animated.View pointerEvents={chromeInteractive ? 'box-none' : 'none'} style={[styles.playerChrome, chromeMotion]}><View style={styles.swipeHandle} /><PressableScale accessibilityLabel={t(isWatchParty ? 'Minimize watch party' : 'Close player')} onPress={handleDismiss} style={styles.close}><Ionicons name={isWatchParty ? 'chevron-down' : 'close'} color={colors.white} size={25} /></PressableScale><PressableScale disabled={isWatchParty && !canControlParty} onPress={togglePlayback} style={[styles.centerPlay, isWatchParty && !canControlParty && { opacity: .45 }]}><Ionicons name={playingChange?.isPlaying ? 'pause' : 'play'} color={colors.white} size={27} /></PressableScale><GestureDetector gesture={progressGesture}><View onLayout={(event) => setProgressWidth(event.nativeEvent.layout.width)} style={styles.playerProgress}><View style={styles.playerProgressTrack}><View style={[styles.playerProgressFill, { width: `${playbackPercent}%` }]} /></View><View style={[styles.playerProgressThumb, { left: `${playbackPercent}%` }]} /></View></GestureDetector><View style={styles.compactControls}><PressableScale disabled={isWatchParty && !canControlParty} onPress={togglePlayback} style={[styles.controlButton, isWatchParty && !canControlParty && { opacity: .45 }]}><Ionicons name={playingChange?.isPlaying ? 'pause' : 'play'} color={colors.white} size={18} /></PressableScale><Text style={styles.controlTime}>{clock(currentTime)} / {clock(duration)}</Text>{isPlayingHDR && <View style={styles.hdrBadge}><Text style={styles.hdrBadgeText}>HDR</Text></View>}<View style={styles.controlSpacer} />{hasAudioChoices && <PressableScale accessibilityLabel={t('Audio tracks')} onPress={handleAudioTracks} style={styles.controlButton}><Ionicons name="musical-notes-outline" color={colors.white} size={18} /></PressableScale>}{hasCaptions && <PressableScale onPress={handleCaptions} style={styles.controlButton}><Ionicons name="logo-closed-captioning" color={player.subtitleTrack ? colors.accentBright : colors.white} size={19} /></PressableScale>}{hasQualityChoices && <PressableScale onPress={() => setQualityOpen(true)} style={styles.controlButton}><Ionicons name="settings-outline" color={colors.white} size={19} /></PressableScale>}<PressableScale onPress={toggleFullscreen} style={styles.controlButton}><Ionicons name={isFullscreen ? 'contract-outline' : 'scan-outline'} color={colors.white} size={20} /></PressableScale></View></Animated.View>
       {introState !== 'done' && !partyID && <View style={styles.introOverlay}>
@@ -318,6 +354,15 @@ export default function VideoScreen() {
           ? <VideoView player={introPlayer} style={StyleSheet.absoluteFill} nativeControls={false} fullscreenOptions={{ enable: false }} contentFit="contain" surfaceType="textureView" />
           : <ActivityIndicator color={colors.accentBright} />}
         {introState === 'playing' && introQuery.data?.allow_skip !== false && <PressableScale accessibilityLabel={t('Skip')} onPress={finishIntro} style={styles.introSkip}><Text style={styles.skipIntroText}>{t('Skip')}</Text><Ionicons name="play-skip-forward" color={colors.white} size={16} /></PressableScale>}
+      </View>}
+      {explicitGate && <View style={styles.explicitGate}>
+        <View style={styles.explicitBadge}><Text style={styles.explicitBadgeText}>18+</Text></View>
+        <Text style={styles.explicitTitle}>{t('Explicit content')}</Text>
+        <Text style={styles.explicitBody}>{t('This is marked 18+ and may contain content intended for adults.')}</Text>
+        <View style={styles.explicitButtons}>
+          <PressableScale onPress={leavePlayer} style={styles.explicitBack}><Text style={styles.explicitBackText}>{t('Go back')}</Text></PressableScale>
+          <PressableScale onPress={acceptExplicit} style={styles.explicitContinue}><Text style={styles.explicitContinueText}>{t('Continue')}</Text></PressableScale>
+        </View>
       </View>}
     </Animated.View></GestureDetector>
     {isFullscreen && isWatchParty && fullscreenPartyChatVisible && <View style={[styles.fullscreenPartyChat, { paddingTop: Math.max(insets.top, 8), paddingBottom: Math.max(insets.bottom, 8) }]}><WatchPartyChat overlay onHide={() => setFullscreenPartyChatVisible(false)} /></View>}
@@ -345,7 +390,7 @@ export default function VideoScreen() {
         {comments.isLoading && <ActivityIndicator style={{ marginVertical: 20 }} color={colors.accentBright} />}
         {!comments.isLoading && !comments.data?.length && <Text style={styles.noComments}>{t('No comments yet. Start the conversation.')}</Text>}
         {orderedComments.map((comment) => <CommentNode key={comment.id} comment={comment} focusedCommentID={focusedCommentID} highlightedCommentID={highlightedCommentID} actorID={actorID} signedIn={signedIn} busy={replyMutation.isPending || commentLikeMutation.isPending || deleteCommentMutation.isPending} onRequireAccount={requireAccount} onReply={(parentID, text) => replyMutation.mutateAsync({ parentID, text }).then(() => undefined)} onToggleLike={(item) => commentLikeMutation.mutate({ commentID: item.id, liked: !!item.liked_by_actor })} onDelete={(item) => Alert.alert(t('Delete comment?'), t('This will also remove its replies.'), [{ text: t('Cancel'), style: 'cancel' }, { text: t('Delete'), style: 'destructive', onPress: () => deleteCommentMutation.mutate(item.id) }])} />)}
-        {!!related.data?.length && <View style={styles.related}><SectionRail title={t('Up next')} videos={related.data} /></View>}
+        {(!!related.data?.length || !!relatedMedia.data?.length) && <View style={styles.related}><SectionRail title={t('Up next')} videos={related.data || []} media={relatedMedia.data} mediaFirst={!!movieContext.data?.movie || !!seriesContext.data} /></View>}
       </Animated.View>
     </ScrollView>}
     <SwipeSheet visible={menuOpen} title={t('Video options')} onClose={() => setMenuOpen(false)}>
@@ -397,6 +442,7 @@ const styles = StyleSheet.create({
   actions: { gap: 9, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 3 }, action: { height: 42, flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: radii.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 14 }, actionActive: { borderColor: 'rgba(239,68,68,.42)', backgroundColor: 'rgba(127,29,29,.18)' }, actionText: { color: colors.text, fontSize: 12, fontWeight: '800' }, actionTextActive: { color: colors.accentBright }, downloadStatus: { marginHorizontal: 20, marginTop: 10 }, downloadStatusText: { color: colors.textMuted, fontSize: 11 }, progressTrack: { height: 3, overflow: 'hidden', borderRadius: 2, backgroundColor: colors.surfaceStrong, marginTop: 7 }, progressFill: { height: '100%', backgroundColor: colors.accentBright },
   channelRow: { flexDirection: 'row', alignItems: 'center', marginTop: 20, marginHorizontal: 20, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border }, channelLink: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' }, avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceStrong }, channelCopy: { flex: 1, marginLeft: 12 }, channelNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 }, channel: { color: colors.text, fontSize: 15, fontWeight: '800' }, channelHint: { color: colors.textDim, fontSize: 11, marginTop: 4 }, channelSubscribe: { minWidth: 88, height: 38, paddingHorizontal: 13, borderRadius: radii.pill, backgroundColor: colors.text, alignItems: 'center', justifyContent: 'center' }, channelSubscribed: { backgroundColor: colors.surfaceStrong }, channelSubscribeText: { color: colors.black, fontSize: 11, fontWeight: '900' }, channelSubscribedText: { color: colors.text }, descriptionCard: { marginTop: 20, marginHorizontal: 20, padding: 16, borderRadius: radii.lg, backgroundColor: colors.surface }, description: { color: colors.textMuted, fontSize: 14, lineHeight: 21 }, descriptionToggle: { color: colors.text, fontSize: 11, fontWeight: '900', marginTop: 10 }, sectionTitle: { color: colors.text, fontSize: 21, fontWeight: '900' },
   commentsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 28, paddingHorizontal: 20 }, commentCount: { color: colors.textMuted, fontSize: 13 }, composer: { flexDirection: 'row', alignItems: 'flex-end', margin: 20, marginTop: 14, borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingLeft: 13 }, commentInput: { flex: 1, minHeight: 48, maxHeight: 110, color: colors.text, fontSize: 14, paddingVertical: 13 }, gifButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' }, gifButtonText: { color: colors.gilid, fontSize: 10, fontWeight: '900', letterSpacing: .5 }, send: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }, signInComments: { margin: 20, marginTop: 14, padding: 15, borderRadius: radii.lg, backgroundColor: colors.surface }, signInCommentsText: { color: colors.gilid, textAlign: 'center', fontSize: 13, fontWeight: '800' }, noComments: { color: colors.textMuted, fontSize: 12, paddingHorizontal: 20, paddingVertical: 18 }, comment: { flexDirection: 'row', gap: 11, marginHorizontal: 20, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }, commentFocused: { marginTop: 6, marginBottom: 6, paddingHorizontal: 12, borderWidth: 1, borderColor: colors.accentBright, borderRadius: radii.lg, backgroundColor: 'rgba(127,29,29,.24)' }, replyComment: { marginHorizontal: 0, paddingLeft: 10, borderLeftWidth: 1, borderLeftColor: colors.borderStrong }, commentAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surfaceStrong }, commentBody: { flex: 1, minWidth: 0 }, commentTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }, commentAuthorRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 }, commentAuthor: { color: colors.text, fontSize: 12, fontWeight: '800', flexShrink: 1 }, commentDate: { color: colors.textDim, fontSize: 9 }, commentText: { color: colors.text, fontSize: 14, lineHeight: 20, marginTop: 6 }, commentGIF: { width: '100%', maxWidth: 300, aspectRatio: 1.35, marginTop: 9, borderRadius: radii.md, backgroundColor: colors.surfaceStrong }, commentActions: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 10 }, commentAction: { minHeight: 28, flexDirection: 'row', alignItems: 'center', gap: 5 }, commentActionText: { color: colors.textMuted, fontSize: 10, fontWeight: '800' }, replyComposer: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 9, borderRadius: radii.md, backgroundColor: colors.surfaceStrong, paddingLeft: 10 }, replyInput: { flex: 1, minHeight: 42, maxHeight: 90, color: colors.text, fontSize: 12, paddingVertical: 10 }, replySend: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' }, repliesToggle: { alignSelf: 'flex-start', height: 34, marginTop: 7, flexDirection: 'row', alignItems: 'center', gap: 5 }, repliesToggleText: { color: colors.gilid, fontSize: 10, fontWeight: '900' }, replies: { marginTop: 3 }, related: { marginTop: 6, marginHorizontal: -20 },
+  explicitGate: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 20, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 24, backgroundColor: 'rgba(0,0,0,.92)' }, explicitBadge: { borderRadius: 6, borderWidth: 1, borderColor: 'rgba(248,113,113,.7)', backgroundColor: 'rgba(127,29,29,.8)', paddingHorizontal: 8, paddingVertical: 2 }, explicitBadgeText: { color: '#fee2e2', fontSize: 12, fontWeight: '900' }, explicitTitle: { color: colors.white, fontSize: 16, fontWeight: '800', marginTop: 2 }, explicitBody: { color: colors.textMuted, fontSize: 12, lineHeight: 17, textAlign: 'center', maxWidth: 320 }, explicitButtons: { flexDirection: 'row', gap: 10, marginTop: 8 }, explicitBack: { height: 36, justifyContent: 'center', paddingHorizontal: 16, borderRadius: radii.pill, backgroundColor: 'rgba(255,255,255,.12)' }, explicitBackText: { color: colors.white, fontSize: 13, fontWeight: '700' }, explicitContinue: { height: 36, justifyContent: 'center', paddingHorizontal: 18, borderRadius: radii.pill, backgroundColor: colors.white }, explicitContinueText: { color: colors.black, fontSize: 13, fontWeight: '800' },
   descriptionLink: { color: '#60a5fa', textDecorationLine: 'underline' }, menuItem: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 13 }, menuIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceStrong }, menuCopy: { flex: 1 }, menuTitle: { color: colors.text, fontSize: 14, fontWeight: '800' }, menuSubtitle: { color: colors.textMuted, fontSize: 11, marginTop: 3 }, menuSection: { color: colors.textDim, fontSize: 10, fontWeight: '900', letterSpacing: 1.4, marginTop: 18, marginBottom: 7 }, noPlaylists: { color: colors.textMuted, fontSize: 12, lineHeight: 18, paddingBottom: 10 },
   contextCard: { marginHorizontal: 20, marginTop: 18, borderRadius: radii.xl, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }, contextHeading: { flexDirection: 'row', alignItems: 'center', padding: 16 }, contextCopy: { flex: 1 }, contextKicker: { color: colors.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1.3 }, contextTitle: { color: colors.text, fontSize: 17, fontWeight: '900', marginTop: 5 }, contextMeta: { color: colors.textMuted, fontSize: 11, lineHeight: 16, marginTop: 5 }, episodeRail: { paddingHorizontal: 14, paddingBottom: 15, gap: 10 }, watchEpisode: { width: 130, borderRadius: radii.md, overflow: 'hidden', opacity: .72 }, watchEpisodeActive: { opacity: 1, borderWidth: 1, borderColor: colors.accentBright }, watchThumb: { width: '100%', aspectRatio: 16 / 9, backgroundColor: colors.surfaceStrong }, watchEpisodeTitle: { color: colors.text, fontSize: 10, fontWeight: '700', padding: 8 }, movieContext: { marginHorizontal: 20, marginTop: 18, padding: 13, borderRadius: radii.xl, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: 13 }, moviePoster: { width: 55, height: 82, borderRadius: radii.md, backgroundColor: colors.surfaceStrong }, trailerCard: { marginHorizontal: 20, marginTop: 18, padding: 13, borderRadius: radii.xl, borderWidth: 1, borderColor: 'rgba(239,68,68,.34)', backgroundColor: colors.surface, flexDirection: 'row', gap: 14 }, trailerPoster: { width: 86, aspectRatio: 2 / 3, borderRadius: radii.md, backgroundColor: colors.surfaceStrong }, trailerCopy: { flex: 1, minWidth: 0, paddingVertical: 3 }, trailerButton: { alignSelf: 'flex-start', height: 36, marginTop: 12, paddingHorizontal: 14, borderRadius: radii.md, backgroundColor: colors.accent, flexDirection: 'row', alignItems: 'center', gap: 7 }, trailerButtonText: { color: colors.white, fontSize: 11, fontWeight: '900' }, nextEpisode: { marginHorizontal: 20, marginTop: 12, padding: 15, borderRadius: radii.lg, backgroundColor: 'rgba(127,29,29,.16)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, nextKicker: { color: colors.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1.2 }, nextTitle: { color: colors.text, fontSize: 13, fontWeight: '800', marginTop: 5, maxWidth: 280 },
 });

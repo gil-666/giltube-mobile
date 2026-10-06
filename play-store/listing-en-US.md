@@ -2,20 +2,22 @@
 
 ## Short description
 
-Watch videos, movies and series, follow creators, and enjoy playback offline.
+Watch videos, movies, series and live streams, follow creators and save offline.
 
 ## Full description
 
-GilTube brings creators, videos, movies, series and music together in a fast native mobile experience.
+GilTube brings creators, videos, movies, series, live streams and music together in a fast native mobile experience.
 
-Start watching immediately as a guest—an account is never required just to explore. Sign in with GilID when you want to follow channels, join conversations, receive notifications, upload content or keep your viewing experience synchronized.
+Start watching immediately as a guest—an account is never required just to explore. Sign in with GilID when you want to follow channels, join conversations, receive notifications, upload content, go live or keep your viewing experience synchronized.
 
 Watch your way:
 
 • Stream videos with smooth native playback
+• Choose video quality, or let Auto adapt to your connection
+• Watch HDR titles in high dynamic range on supported devices
 • Download supported videos for offline playback
-• Continue watching from your saved progress
-• Choose video quality, audio language and subtitle tracks
+• Resume from your saved progress, or start over
+• Choose audio language and subtitle tracks
 • Use Picture-in-Picture and background playback
 • Double-tap to seek and rotate for a full-screen player
 • Skip intros on supported series episodes
@@ -24,9 +26,17 @@ Discover more:
 
 • Browse dedicated movie and series experiences
 • Explore seasons, episodes, trailers and watch progress
+• See quality, HDR and 5.1 surround badges at a glance
 • Search videos, channels, movies, series and playlists
 • Visit creator channels with native, swipeable tabs
 • Follow subscriptions and personalized recommendations
+• Open GilTube links directly in the app
+
+Watch together:
+
+• Tune in to live streams with live chat and polls
+• Start watch parties with synced playback and room chat
+• Invite GilTube members and share party links
 
 Join the community:
 
@@ -38,8 +48,11 @@ Join the community:
 Create from anywhere:
 
 • Upload videos through the native upload screen
+• Go live from your phone's camera
 • Open your creator dashboard and analytics
 • Create, customize and switch between multiple channels
 • Keep channel identity and playback preferences synchronized with GilTube
+
+Available in English and Spanish, with in-app updates from Google Play.
 
 GilTube is built for an expressive, creator-first viewing experience wherever you go.

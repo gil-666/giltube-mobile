@@ -36,28 +36,35 @@ async function send(path: string, body: FormData) {
   return payload;
 }
 
-export async function uploadVideo(input: UploadInput) {
+export type ChunkUploadSource = { uri: string; name: string; size?: number | null };
+
+/**
+ * Sends a picked file to /videos/upload-chunk in 8 MB parts and returns the
+ * upload session id; the caller finalizes it with whichever endpoint owns the
+ * upload (video, movie audio track, media ingest, ...).
+ */
+export async function uploadFileChunks(input: ChunkUploadSource, onProgress?: (fraction: number) => void) {
   const sessionID = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
   const tempDirectory = new Directory(Paths.cache, 'giltube-upload-chunks', sessionID);
   tempDirectory.create({ intermediates: true, idempotent: true });
 
   try {
-    let source = new File(input.video.uri);
+    let source = new File(input.uri);
     // Android document providers return content:// handles whose descriptors may
     // be reclaimed while a long upload waits on the network. Stage legacy or
     // provider-backed selections into app-owned storage before reading chunks.
-    if (!input.video.uri.startsWith('file://')) {
-      const stagedSource = new File(tempDirectory, 'selected-video.bin');
+    if (!input.uri.startsWith('file://')) {
+      const stagedSource = new File(tempDirectory, 'selected-file.bin');
       try {
         await source.copy(stagedSource, { overwrite: true });
       } catch {
-        throw new Error('GilTube could not make a stable local copy of this video. Re-select it and keep enough free storage for the upload.');
+        throw new Error('GilTube could not make a stable local copy of this file. Re-select it and keep enough free storage for the upload.');
       }
       source = stagedSource;
     }
 
-    const fileSize = source.size || input.video.size || 0;
-    if (!fileSize) throw new Error('The selected video is empty or cannot be read.');
+    const fileSize = source.size || input.size || 0;
+    if (!fileSize) throw new Error('The selected file is empty or cannot be read.');
     const totalChunks = Math.ceil(fileSize / CHUNK_SIZE);
 
     for (let index = 0; index < totalChunks; index += 1) {
@@ -70,7 +77,7 @@ export async function uploadVideo(input: UploadInput) {
       } finally {
         sourceHandle.close();
       }
-      if (!bytes.length) throw new Error('The selected video could not be fully read.');
+      if (!bytes.length) throw new Error('The selected file could not be fully read.');
 
       const chunkFile = new File(tempDirectory, `chunk-${index}.part`);
       chunkFile.create({ overwrite: true });
@@ -84,32 +91,42 @@ export async function uploadVideo(input: UploadInput) {
         form.append('chunkIndex', String(index));
         form.append('totalChunks', String(totalChunks));
         form.append('uploadSessionId', sessionID);
-        form.append('fileName', input.video.name);
+        form.append('fileName', input.name);
         await send('/videos/upload-chunk', form);
       } finally {
         if (chunkFile.exists) chunkFile.delete();
       }
 
-      input.onProgress?.(Math.round(((index + 1) / (totalChunks + 1)) * 100));
+      onProgress?.((index + 1) / totalChunks);
     }
-
-    const finalize = new FormData();
-    finalize.append('uploadSessionId', sessionID);
-    finalize.append('fileName', input.video.name);
-    finalize.append('title', input.title);
-    finalize.append('description', input.description);
-    finalize.append('channel_id', input.channelID);
-    if (input.categoryID) finalize.append('category_ids[]', input.categoryID);
-    if (input.explicit) finalize.append('explicit', 'true');
-    if (input.hidden) finalize.append('hidden', 'true');
-    if (input.thumbnail) {
-      finalize.append('thumbnail', new File(input.thumbnail.uri));
-    }
-
-    const result = await send('/videos/finalize-upload', finalize);
-    input.onProgress?.(100);
-    return result;
+    return { sessionID, fileName: input.name };
   } finally {
     if (tempDirectory.exists) tempDirectory.delete();
   }
+}
+
+export async function uploadVideo(input: UploadInput) {
+  const { sessionID } = await uploadFileChunks(input.video, (fraction) => input.onProgress?.(Math.round(fraction * 100 * 0.95)));
+
+  const finalize = new FormData();
+  finalize.append('uploadSessionId', sessionID);
+  finalize.append('fileName', input.video.name);
+  finalize.append('title', input.title);
+  finalize.append('description', input.description);
+  finalize.append('channel_id', input.channelID);
+  if (input.categoryID) finalize.append('category_ids[]', input.categoryID);
+  if (input.explicit) finalize.append('explicit', 'true');
+  if (input.hidden) finalize.append('hidden', 'true');
+  if (input.thumbnail) {
+    finalize.append('thumbnail', new File(input.thumbnail.uri));
+  }
+
+  const result = await send('/videos/finalize-upload', finalize);
+  input.onProgress?.(100);
+  return result;
+}
+
+/** Multipart POST to any API path with the session token (no JSON body). */
+export function sendForm(path: string, body: FormData) {
+  return send(path, body);
 }
