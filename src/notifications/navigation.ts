@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 
 import type { NotificationItem } from '@/types/api';
+import { openLive, openVideo } from '@/player/navigation';
 
 type NotificationData = Record<string, unknown>;
 
@@ -74,16 +75,13 @@ export function openNotificationContext(data: NotificationData) {
   const videoID = stringValue(data, 'videoID', 'video_id') || urlContext.videoID;
   const commentID = stringValue(data, 'commentID', 'comment_id') || urlContext.commentID;
   if (videoID) {
-    router.push({
-      pathname: '/video/[id]',
-      params: commentID ? { id: videoID, comment: commentID } : { id: videoID },
-    });
+    openVideo(videoID, commentID ? { commentID } : undefined);
     return;
   }
 
   const channelID = stringValue(data, 'channelID', 'channel_id') || urlContext.channelID;
   if (channelID) {
-    router.push({ pathname: '/live/[channelId]', params: { channelId: channelID } });
+    openLive(channelID);
     return;
   }
 

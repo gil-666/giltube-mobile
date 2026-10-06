@@ -456,8 +456,31 @@ export interface ChannelAnalytics {
   engagement_to_view_rate: number;
 }
 
-export interface MusicArtist { id: string; name: string; slug: string; bio: string; avatar_url: string; banner_url: string; primary_channel_id: string; verified: boolean }
-export interface MusicRelease { id: string; artist_id: string; artist_name: string; artist_slug: string; title: string; slug: string; release_type: 'single' | 'ep' | 'album'; cover_url: string; release_date?: string; label: string; has_lossless_audio: boolean; track_count: number }
+export interface MusicArtist { id: string; name: string; slug: string; bio: string; avatar_url: string; banner_url: string; primary_channel_id: string; channel_name?: string; verified: boolean; created_at?: string }
+export interface MusicRelease {
+  id: string; artist_id: string; artist_name: string; artist_slug: string; artist_avatar_url?: string; title: string; slug: string;
+  release_type: 'single' | 'ep' | 'album'; cover_url: string; release_date?: string; label: string;
+  copyright_text?: string; phonogram_text?: string; territories?: string;
+  has_lossless_audio: boolean; max_audio_bit_depth?: number; max_audio_sample_rate?: number;
+  /** Counts every track, drafts included; the release's track list can be shorter. */
+  track_count: number; created_at?: string;
+}
+/** A published track. Tracks have no artwork of their own: cover_url is the release cover. */
+export interface MusicTrack {
+  id: string; release_id: string; release_title: string; release_slug: string;
+  release_label?: string; release_copyright_text?: string; release_phonogram_text?: string; release_territories?: string;
+  cover_url: string; primary_artist_id: string; artist_name: string; artist_slug: string;
+  title: string; slug: string; disc_number: number; track_number: number; duration_seconds: number;
+  isrc?: string; explicit: boolean; language?: string;
+  /** Original upload (often lossless): /music-assets/tracks/<id>/master.<ext> */
+  audio_url: string; audio_codec?: string; audio_container?: string; audio_sample_rate?: number; audio_bit_depth?: number; audio_lossless: boolean;
+  /** AAC 128 / 256 / 320 kbps .m4a renditions. */
+  audio_low_url: string; audio_medium_url: string; audio_high_url: string;
+  lyrics?: string;
+  /** LRC text: "[mm:ss.xx] line" */
+  synced_lyrics?: string;
+  official_video_id?: string; official_video_title?: string; official_video_thumbnail?: string;
+}
 export interface ChannelMusic { artist: MusicArtist; releases: MusicRelease[] }
 
 export interface AuthSession {

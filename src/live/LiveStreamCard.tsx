@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { PressableScale } from '@/components/PressableScale';
@@ -9,6 +8,7 @@ import { useI18n } from '@/i18n';
 import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import type { LiveStream } from '@/types/api';
 import { resolveMediaURL } from '@/utils/media';
+import { openLive } from '@/player/navigation';
 
 export function LiveStreamRail({ streams }: { streams: LiveStream[] }) {
   const styles = useStyles();
@@ -23,7 +23,7 @@ export function LiveStreamRail({ streams }: { streams: LiveStream[] }) {
 export function LiveStreamCard({ stream }: { stream: LiveStream }) {
   const styles = useStyles();
   const { t } = useI18n();
-  return <PressableScale accessibilityRole="button" accessibilityLabel={`${t('Watch')} ${stream.title} ${t('live')}`} onPress={() => router.push({ pathname: '/live/[channelId]', params: { channelId: stream.channel_id } })} style={styles.card}>
+  return <PressableScale accessibilityRole="button" accessibilityLabel={`${t('Watch')} ${stream.title} ${t('live')}`} onPress={() => openLive(stream.channel_id)} style={styles.card}>
     <View style={styles.imageWrap}>
       <Image source={resolveMediaURL(stream.thumbnail_url || stream.channel?.avatar_url)} style={StyleSheet.absoluteFill} contentFit="cover" transition={180} />
       <View style={styles.badge}><Ionicons name="radio" size={11} color={colors.onAccent} /><Text style={styles.badgeText}>{t('LIVE')}</Text></View>

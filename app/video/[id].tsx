@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { useEvent, useEventListener } from 'expo';
-import { router, useIsFocused, useLocalSearchParams, useNavigation, usePathname } from 'expo-router';
+import { router, useFocusEffect, useIsFocused, useLocalSearchParams, useNavigation, usePathname } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -14,6 +14,8 @@ import Animated, { FadeInDown, runOnJS, useAnimatedStyle, useSharedValue, withDe
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { giltubeAPI } from '@/api/giltube';
+import { APIError } from '@/api/client';
+import { musicAPI } from '@/api/music';
 import { useAuth } from '@/auth/AuthProvider';
 import { useActiveChannel } from '@/channels/ChannelProvider';
 import { ContentRatingCard, type ContentWarningKind } from '@/components/ContentRatingCard';
@@ -24,6 +26,8 @@ import { SwipeSheet } from '@/components/SwipeSheet';
 import { VerifiedBadge } from '@/components/VerifiedBadge';
 import { useDownloads } from '@/downloads/DownloadProvider';
 import { useI18n } from '@/i18n';
+import { musicImage } from '@/music/quality';
+import { openVideo, peekOpenedVideo } from '@/player/navigation';
 import { isWatchPartyEndedError, usePlayer } from '@/player/PlayerProvider';
 import { PlaylistCreator } from '@/playlists/PlaylistCreator';
 import { useAppSettings } from '@/settings/AppSettingsProvider';
@@ -31,7 +35,7 @@ import { colors, makeStyles, motion, radii, withAlpha } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 import { loadHLSQualities } from '@/utils/hls';
 import { isResumable } from '@/utils/watchProgress';
-import type { Comment } from '@/types/api';
+import type { Comment, MusicTrack } from '@/types/api';
 import { WatchPartyChat, WatchPartyPanel } from '@/watch-parties/WatchPartyPanel';
 
 // Videos and series whose 18+ notice was confirmed in this app session, so a
@@ -43,8 +47,7 @@ export default function VideoScreen() {
   const { id, comment: focusedCommentID = '', party: partyID = '', skipIntro: skipIntroParam = '', startOver: startOverParam = '' } = useLocalSearchParams<{ id: string; comment?: string; party?: string; skipIntro?: string; startOver?: string }>(); const pathname = usePathname(); const insets = useSafeAreaInsets(); const queryClient = useQueryClient();
   const { t, compactNumber, number } = useI18n();
   const { account, status } = useAuth(); const signedIn = status === 'signedIn' && !!account; const { activeChannelID: actorID } = useActiveChannel();
-  const { player, video: activeVideo, mode, quality, isLoading: sourceLoading, playbackMasterURL, hdr, setHDREnabled, watchParty, play, switchQuality, joinWatchParty, sendWatchPartyPlayback, minimize, dismiss } = usePlayer(); const { settings } = useAppSettings();
-  const { activity, download, getDownload, remove } = useDownloads();
+  const { player, video: activeVideo, mode, quality, isLoading: sourceLoading, playbackMasterURL, hdr, setHDREnabled, watchParty, play, switchQuality, joinWatchParty, sendWatchPartyPlayback, minimize, expand, dismiss } = usePlayer(); const { settings } = useAppSettings();
   const [playerError, setPlayerError] = useState<{ id: string; message: string } | null>(null); const [menuOpen, setMenuOpen] = useState(false); const [playlistOpen, setPlaylistOpen] = useState(false); const [playlistCreatorOpen, setPlaylistCreatorOpen] = useState(false); const [qualityOpen, setQualityOpen] = useState(false); const [downloadQualityOpen, setDownloadQualityOpen] = useState(false); const [captionOpen, setCaptionOpen] = useState(false); const [audioOpen, setAudioOpen] = useState(false); const [gifOpen, setGIFOpen] = useState(false); const [commentText, setCommentText] = useState(''); const [expandedDescriptionID, setExpandedDescriptionID] = useState(''); const [progressWidth, setProgressWidth] = useState(1); const [seekFeedback, setSeekFeedback] = useState<{ seconds: number; direction: -1 | 1; nonce: number } | null>(null); const [chromeInteractive, setChromeInteractive] = useState(true); const [dismissedHighlightID, setDismissedHighlightID] = useState(''); const [commentsY, setCommentsY] = useState<number | null>(null);
   const [fullscreenPartyChatVisible, setFullscreenPartyChatVisible] = useState(true);
   const videoViewRef = useRef<VideoView>(null); const contentScrollRef = useRef<ScrollView>(null); const resumedVideoRef = useRef(''); const preferencesVideoRef = useRef(''); const focusedScrollRef = useRef(''); const window = useWindowDimensions(); const chromeOpacity = useSharedValue(1);
@@ -54,8 +57,12 @@ export default function VideoScreen() {
   const currentTime = timeUpdate?.currentTime ?? player.currentTime;
   const translateY = useSharedValue(0);
 
+  const { activity, download, getDownload, remove } = useDownloads();
+  // What openVideo handed over: shows the video at once (and offline) and the file to play.
+  const opened = useMemo(() => peekOpenedVideo(id), [id]);
   const videoQuery = useQuery({ queryKey: ['video', id], queryFn: () => giltubeAPI.video(id), enabled: !!id, retry: 1 });
-  const video = videoQuery.data || (activeVideo?.id === id ? activeVideo : null);
+  const video = videoQuery.data || (activeVideo?.id === id ? activeVideo : null) || opened?.video || getDownload(id)?.video || null;
+  const musicTrack = useQuery({ queryKey: ['music-video', id], queryFn: () => musicAPI.forVideo(id).then((data) => data.track).catch((error) => { if (error instanceof APIError && error.status === 404) return null; throw error; }), enabled: !!id, retry: false, staleTime: 5 * 60_000 });
   const related = useQuery({ queryKey: ['related', id], queryFn: () => giltubeAPI.relatedVideos(id, 12), enabled: !!id });
   const relatedMedia = useQuery({ queryKey: ['related-media', id], queryFn: () => giltubeAPI.relatedMedia(id, 4), enabled: !!id, retry: false });
   const seriesContext = useQuery({ queryKey: ['series-context', id], queryFn: () => giltubeAPI.seriesContext(id), enabled: !!id, retry: false });
@@ -75,8 +82,8 @@ export default function VideoScreen() {
   const playbackQualities = useQuery({ queryKey: ['hls-qualities', playbackQualityURL], queryFn: () => loadHLSQualities(playbackQualityURL), enabled: !!playbackQualityURL && !playbackQualityURL.startsWith('file:') });
   const isPlayingHDR = activeVideo?.id === id && hdr.playing;
   const saved = id ? getDownload(id) : undefined; const downloadActivity = id ? activity[id] : undefined;
-  // Focus, not just the pathname: an earlier watch screen for the same video
-  // can sit in the stack, and only the focused one may drive the shared player.
+  // Focus, not just the pathname: a screen pushed on top (channel, music, ...)
+  // leaves this one in the stack, and only a focused watch screen shows the player.
   const isFocused = useIsFocused();
   const isCurrentWatchRoute = isFocused && pathname === `/video/${id}`;
   const isWatchParty = !!partyID && watchParty?.party.id === partyID;
@@ -170,15 +177,37 @@ export default function VideoScreen() {
   // Leaving or minimizing during the intro hands straight over to the content.
   useEffect(() => { if (!isFocused) finishIntro(); }, [finishIntro, isFocused]);
 
-  // Returning to this screen (e.g. Back from a related video) reloads its video
-  // where it was left, and re-attaches the video surface once the transition
-  // ends so it never keeps the previous screen's frozen frame.
+  // This screen plays its own video once, when it mounts (or its id changes);
+  // it never takes the player back later. Only one watch screen exists (see
+  // src/player/navigation.ts), so nothing else can hold this video's place. A
+  // player that is already on this video (opened from the mini player) is
+  // adopted as is. If the video was stopped meanwhile (closed, or music took
+  // over) the screen offers to play it again.
+  const startedIDRef = useRef('');
+  const [startedID, setStartedID] = useState('');
+  const playOwnVideo = useCallback((target: NonNullable<typeof video>, sourceUri?: string) => {
+    return play(target, sourceUri, { shouldAutoplay: () => introStateRef.current === 'done' && !holdPlaybackRef.current })
+      .catch((error) => setPlayerError({ id: target.id, message: error instanceof Error ? error.message : 'Unable to play this video.' }));
+  }, [play]);
+  useEffect(() => {
+    if (partyID || !video || startedIDRef.current === id) return;
+    startedIDRef.current = id;
+    if (activeVideoIDRef.current === id) {
+      expand();
+      void Promise.resolve().then(() => setStartedID(id));
+      return;
+    }
+    void playOwnVideo(video, opened?.sourceUri).then(() => setStartedID(id));
+  }, [expand, id, opened?.sourceUri, partyID, playOwnVideo, video]);
+  const playerReleased = !partyID && !!video && startedID === id && !activeVideo && mode === 'hidden' && !sourceLoading && playerError?.id !== id;
+
+  // Coming back to this screen (from a screen opened on top of it) expands
+  // the player it left playing, and re-attaches the video surface once the
+  // transition ends so it never shows the mini player's frozen frame. Only
+  // the focused watch screen handles Android Back: it minimizes.
   const navigation = useNavigation();
-  const lastPositionRef = useRef(0);
-  const pendingSeekRef = useRef(0);
   const wasBlurredRef = useRef(false);
   const [surfaceKey, setSurfaceKey] = useState(0);
-  useEffect(() => { if (showingPlayer && currentTime > 0) lastPositionRef.current = currentTime; }, [currentTime, showingPlayer]);
   useEffect(() => { if (!isFocused) wasBlurredRef.current = true; }, [isFocused]);
   useEffect(() => (navigation as unknown as { addListener: (event: 'transitionEnd', listener: (event: { data?: { closing?: boolean } }) => void) => () => void })
     .addListener('transitionEnd', (event) => {
@@ -187,27 +216,16 @@ export default function VideoScreen() {
       setSurfaceKey((key) => key + 1);
     }), [navigation]);
   useEffect(() => {
-    if (!showingPlayer || sourceLoading || statusChange?.status !== 'readyToPlay' || pendingSeekRef.current <= 0) return;
-    const target = pendingSeekRef.current;
-    pendingSeekRef.current = 0;
-    if (player.currentTime < 2) player.currentTime = target;
-  }, [player, showingPlayer, sourceLoading, statusChange?.status]);
-  useEffect(() => {
-    if (partyID || !isCurrentWatchRoute || !video || activeVideo?.id === video.id) return;
-    if (lastPositionRef.current > 2) pendingSeekRef.current = lastPositionRef.current;
-    void play(video, undefined, { shouldAutoplay: () => introStateRef.current === 'done' && !holdPlaybackRef.current }).catch((error) => setPlayerError({ id: video.id, message: error instanceof Error ? error.message : 'Unable to play this video.' }));
-  }, [activeVideo?.id, isCurrentWatchRoute, partyID, play, video]);
-  useEffect(() => {
     if (!partyID || status !== 'signedIn' || watchParty?.party.id === partyID) return;
     let cancelled = false;
     void joinWatchParty(partyID).then((snapshot) => {
-      if (!cancelled && snapshot.video.id !== id) router.replace({ pathname: '/video/[id]', params: { id: snapshot.video.id, party: partyID } });
+      if (!cancelled && snapshot.video.id !== id) openVideo(snapshot.video.id, { partyID });
     }).catch((error) => { if (!cancelled && !isWatchPartyEndedError(error)) setPlayerError({ id, message: error instanceof Error ? error.message : 'Unable to join this watch party.' }); });
     return () => { cancelled = true; };
   }, [id, joinWatchParty, partyID, status, watchParty?.party.id]);
   useEffect(() => {
     if (!isWatchParty || !watchPartyVideoID || watchPartyVideoID === id) return;
-    router.replace({ pathname: '/video/[id]', params: { id: watchPartyVideoID, party: partyID } });
+    openVideo(watchPartyVideoID, { partyID });
   }, [id, isWatchParty, partyID, watchPartyVideoID]);
   useEffect(() => {
     if (!focusedCommentID) return;
@@ -265,8 +283,18 @@ export default function VideoScreen() {
     if (explicitSeriesID) explicitAcceptedKeys.add(explicitSeriesID);
     setExplicitAccepted(true);
   }, [explicitSeriesID, id]);
-  const handleMinimize = useCallback(() => { minimize(); leavePlayer(); }, [leavePlayer, minimize]);
-  const handleDismiss = useCallback(() => { if (isWatchParty) { handleMinimize(); return; } dismiss(); if (router.canDismiss()) router.dismissAll(); else router.replace('/(tabs)'); }, [dismiss, handleMinimize, isWatchParty]);
+  // Back (button, gesture, swipe down) always minimizes: the video keeps
+  // playing in the mini player over the screen underneath.
+  const handleMinimize = useCallback(() => { void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP); minimize(); leavePlayer(); }, [leavePlayer, minimize]);
+  const handleDismiss = useCallback(() => { if (isWatchParty) { handleMinimize(); return; } dismiss(); leavePlayer(); }, [dismiss, handleMinimize, isWatchParty, leavePlayer]);
+  const declineExplicit = useCallback(() => { dismiss(); leavePlayer(); }, [dismiss, leavePlayer]);
+  useFocusEffect(useCallback(() => {
+    if ((startedIDRef.current === id || partyID) && activeVideoIDRef.current === id) expand();
+  }, [expand, id, partyID]));
+  useFocusEffect(useCallback(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => { handleMinimize(); return true; });
+    return () => subscription.remove();
+  }, [handleMinimize]));
   const revealPlayerChrome = useCallback(() => {
     setChromeInteractive(true);
     chromeOpacity.value = withSequence(withTiming(1, { duration: 120 }), withDelay(2600, withTiming(0, { duration: 420 }, (finished) => { if (finished) runOnJS(setChromeInteractive)(false); })));
@@ -274,7 +302,6 @@ export default function VideoScreen() {
   useEffect(() => { if (!showingPlayer) return; const timer = setTimeout(revealPlayerChrome, 0); return () => clearTimeout(timer); }, [revealPlayerChrome, showingPlayer]);
   const seekBy = useCallback((direction: -1 | 1) => { if ((isWatchParty && !canControlParty) || introState !== 'done') return; const seconds = settings.doubleTapSeconds * direction; const total = Math.max(0, player.duration || 0); const target = Math.max(0, total > 0 ? Math.min(total, player.currentTime + seconds) : player.currentTime + seconds); if (isWatchParty) void sendWatchPartyPlayback('seek', target); else player.currentTime = target; setSeekFeedback({ seconds: Math.abs(seconds), direction, nonce: Date.now() }); void Haptics.selectionAsync(); revealPlayerChrome(); }, [canControlParty, introState, isWatchParty, player, revealPlayerChrome, sendWatchPartyPlayback, settings.doubleTapSeconds]);
   useEffect(() => { if (!seekFeedback) return; const timer = setTimeout(() => setSeekFeedback(null), 650); return () => clearTimeout(timer); }, [seekFeedback]);
-  useEffect(() => { const subscription = BackHandler.addEventListener('hardwareBackPress', () => { handleMinimize(); return true; }); return () => subscription.remove(); }, [handleMinimize]);
   const swipeDown = useMemo(() => Gesture.Pan().activeOffsetY(12).failOffsetX([-36, 36]).onBegin(() => { runOnJS(revealPlayerChrome)(); }).onUpdate((event) => { translateY.value = Math.max(0, event.translationY); }).onEnd((event) => { if (event.translationY > 82 || event.velocityY > 720) { runOnJS(handleMinimize)(); return; } translateY.value = withSpring(0, motion.spring); }), [handleMinimize, revealPlayerChrome, translateY]);
   const doubleTap = useMemo(() => Gesture.Tap().numberOfTaps(2).maxDuration(280).onEnd((event) => { runOnJS(seekBy)(event.x < window.width / 2 ? -1 : 1); }), [seekBy, window.width]);
   const playerGesture = useMemo(() => Gesture.Race(swipeDown, doubleTap), [doubleTap, swipeDown]);
@@ -335,7 +362,8 @@ export default function VideoScreen() {
   const handleAudioTracks = () => { setAudioOpen(true); revealPlayerChrome(); };
   const toggleFullscreen = () => { void ScreenOrientation.lockAsync(isFullscreen ? ScreenOrientation.OrientationLock.PORTRAIT_UP : ScreenOrientation.OrientationLock.LANDSCAPE); revealPlayerChrome(); };
   useEffect(() => {
-    void (showingPlayer ? ScreenOrientation.unlockAsync() : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP));
+    if (!showingPlayer) return;
+    void ScreenOrientation.unlockAsync();
     return () => { void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP); };
   }, [showingPlayer]);
   useEffect(() => { player.staysActiveInBackground = isWatchParty || settings.backgroundPlayback || settings.pipEnabled; }, [isWatchParty, player, settings.backgroundPlayback, settings.pipEnabled]);
@@ -344,7 +372,7 @@ export default function VideoScreen() {
   return <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <StatusBar hidden={isFullscreen} />
     <GestureDetector gesture={playerGesture}><Animated.View style={[styles.playerShell, isFullscreen ? styles.playerFullscreen : { marginTop: insets.top }, playerMotion]}>
-      {showingPlayer ? <VideoView key={`${isFullscreen ? 'landscape' : 'portrait'}-player-${surfaceKey}-${isPlayingHDR ? 'hdr' : 'sdr'}`} ref={videoViewRef} player={player} onTouchStart={revealPlayerChrome} style={StyleSheet.absoluteFill} nativeControls={false} fullscreenOptions={{ enable: false }} allowsPictureInPicture={settings.pipEnabled} startsPictureInPictureAutomatically={settings.pipEnabled} contentFit="contain" surfaceType={isPlayingHDR ? 'surfaceView' : 'textureView'} /> : <View style={styles.playerLoading}><ActivityIndicator color={colors.accentBright} />{playerError?.id === id && <Text style={styles.playerError}>{playerError.message}</Text>}</View>}
+      {showingPlayer ? <VideoView key={`${isFullscreen ? 'landscape' : 'portrait'}-player-${surfaceKey}-${isPlayingHDR ? 'hdr' : 'sdr'}`} ref={videoViewRef} player={player} onTouchStart={revealPlayerChrome} style={StyleSheet.absoluteFill} nativeControls={false} fullscreenOptions={{ enable: false }} allowsPictureInPicture={settings.pipEnabled} startsPictureInPictureAutomatically={settings.pipEnabled} contentFit="contain" surfaceType={isPlayingHDR ? 'surfaceView' : 'textureView'} /> : playerReleased && isFocused ? <PressableScale accessibilityLabel={t('Play')} onPress={() => { setPlayerError(null); void playOwnVideo(video); }} style={styles.playerLoading}><Image source={resolveMediaURL(video.thumbnail_url)} style={[StyleSheet.absoluteFill, styles.releasedPoster]} contentFit="cover" /><View style={styles.releasedPlay}><Ionicons name="play" color={colors.white} size={30} /></View></PressableScale> : <View style={styles.playerLoading}><ActivityIndicator color={colors.accentBright} />{playerError?.id === id && <Text style={styles.playerError}>{playerError.message}</Text>}</View>}
       {showPlaybackLoading && <View pointerEvents="none" style={styles.buffering}><View style={styles.bufferingDisc}><ActivityIndicator color={colors.white} size="large" /></View></View>}
       {!!seekFeedback && <View pointerEvents="none" style={[styles.seekFeedback, seekFeedback.direction < 0 ? styles.seekFeedbackBack : styles.seekFeedbackForward]}><Ionicons name={seekFeedback.direction < 0 ? 'play-back' : 'play-forward'} color={colors.white} size={24} /><Text style={styles.seekFeedbackText}>{seekFeedback.seconds} {t('seconds')}</Text></View>}
       {(!!playingRating?.rating || !!playingWarning) && <ContentRatingCard key={id} rating={playingRating} warning={playingWarning} active={ratingCardActive} fullscreen={isFullscreen} />}
@@ -361,7 +389,7 @@ export default function VideoScreen() {
         <Text style={styles.explicitTitle}>{t('Explicit content')}</Text>
         <Text style={styles.explicitBody}>{t('This is marked 18+ and may contain content intended for adults.')}</Text>
         <View style={styles.explicitButtons}>
-          <PressableScale onPress={leavePlayer} style={styles.explicitBack}><Text style={styles.explicitBackText}>{t('Go back')}</Text></PressableScale>
+          <PressableScale onPress={declineExplicit} style={styles.explicitBack}><Text style={styles.explicitBackText}>{t('Go back')}</Text></PressableScale>
           <PressableScale onPress={acceptExplicit} style={styles.explicitContinue}><Text style={styles.explicitContinueText}>{t('Continue')}</Text></PressableScale>
         </View>
       </View>}
@@ -381,11 +409,12 @@ export default function VideoScreen() {
         {!!downloadActivity && <View style={styles.downloadStatus}><Text style={styles.downloadStatusText}>{downloadStatusText(downloadActivity, t)}</Text>{downloadActivity.status === 'downloading' && <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.max(2, downloadActivity.progress * 100)}%` }]} /></View>}</View>}
         <View style={styles.channelRow}><PressableScale onPress={() => video.channel_id && router.push({ pathname: '/channel/[id]', params: { id: video.channel_id } })} style={styles.channelLink}><Image source={resolveMediaURL(video.channel?.avatar_url || '')} style={styles.avatar} contentFit="cover" /><View style={styles.channelCopy}><View style={styles.channelNameRow}><Text style={styles.channel}>{video.channel?.name || 'GilTube'}</Text><VerifiedBadge verified={video.channel?.verified} size={16} /></View><Text style={styles.channelHint}>{subscription.data ? `${compactNumber(subscription.data.subscriber_count)} ${t(subscription.data.subscriber_count === 1 ? 'subscriber' : 'subscribers')}` : t('View channel')}</Text></View></PressableScale>{actorID !== video.channel_id && <PressableScale disabled={subscriptionMutation.isPending} onPress={() => requireAccount() && subscriptionMutation.mutate()} style={[styles.channelSubscribe, subscription.data?.subscribed && styles.channelSubscribed]}><Text style={[styles.channelSubscribeText, subscription.data?.subscribed && styles.channelSubscribedText]}>{t(subscription.data?.subscribed ? 'Subscribed' : 'Subscribe')}</Text></PressableScale>}</View>
         {!!video.description && <View style={styles.descriptionCard}><LinkedDescription text={video.description} expanded={expandedDescriptionID === id} /><PressableScale onPress={() => setExpandedDescriptionID((value) => value === id ? '' : id)}><Text style={styles.descriptionToggle}>{t(expandedDescriptionID === id ? 'Show less' : 'More')}</Text></PressableScale></View>}
+        {!!musicTrack.data && <MusicInVideoCard track={musicTrack.data} />}
         {!!seriesTrailerContext.data?.series && <TrailerSeriesSection series={seriesTrailerContext.data.series} />}
         {!!movieTrailerContext.data?.movie && <TrailerMovieSection movie={movieTrailerContext.data.movie} />}
         {!!seriesContext.data && <SeriesWatchSection context={seriesContext.data} currentVideoID={id} />}
         {!!movieContext.data?.movie && <MovieWatchSection movie={movieContext.data.movie} />}
-        {!!nextEpisode && <PressableScale onPress={() => router.replace({ pathname: '/video/[id]', params: { id: nextEpisode.video_id, skipIntro: '1' } })} style={styles.nextEpisode}><View><Text style={styles.nextKicker}>{t('PLAY NEXT')}</Text><Text style={styles.nextTitle}>{t('S')}{nextEpisode.season_number} E{nextEpisode.episode_number} · {nextEpisode.title}</Text></View><Ionicons name="play-circle" color={colors.accentBright} size={34} /></PressableScale>}
+        {!!nextEpisode && <PressableScale onPress={() => openVideo(nextEpisode.video_id, { skipIntro: true })} style={styles.nextEpisode}><View><Text style={styles.nextKicker}>{t('PLAY NEXT')}</Text><Text style={styles.nextTitle}>{t('S')}{nextEpisode.season_number} E{nextEpisode.episode_number} · {nextEpisode.title}</Text></View><Ionicons name="play-circle" color={colors.accentBright} size={34} /></PressableScale>}
         <View onLayout={(event) => setCommentsY(event.nativeEvent.layout.y)} style={styles.commentsHeader}><Text style={styles.sectionTitle}>{t('Comments')}</Text><Text style={styles.commentCount}>{number(video.comments_count || comments.data?.length || 0)}</Text></View>
         {signedIn ? <View style={styles.composer}><TextInput value={commentText} onChangeText={setCommentText} placeholder={t('Add a comment…')} placeholderTextColor={colors.textDim} selectionColor={colors.accentBright} multiline maxLength={500} style={styles.commentInput} /><PressableScale onPress={() => setGIFOpen(true)} style={styles.gifButton}><Text style={styles.gifButtonText}>GIF</Text></PressableScale><PressableScale disabled={!commentText.trim() || commentMutation.isPending} onPress={() => actorID ? commentMutation.mutate() : requireAccount()} style={styles.send}><Ionicons name="send" size={18} color={commentText.trim() ? colors.accentBright : colors.textDim} /></PressableScale></View> : <PressableScale onPress={() => router.push('/login')} style={styles.signInComments}><Text style={styles.signInCommentsText}>{t('Sign in to join the conversation')}</Text></PressableScale>}
         {comments.isLoading && <ActivityIndicator style={{ marginVertical: 20 }} color={colors.accentBright} />}
@@ -416,10 +445,26 @@ function MenuItem({ icon, title, subtitle, onPress }: { icon: keyof typeof Ionic
 function megabytes(bytes: number) { return `${(Math.max(0, bytes) / 1024 / 1024).toFixed(1)} MB`; }
 function downloadStatusText(activity: import('@/downloads/DownloadProvider').DownloadActivity, t: (value: string) => string) { if (activity.status !== 'downloading' || activity.totalBytes <= 0) return t(activity.message); return `${t('Downloading')} ${megabytes(activity.bytesWritten)} / ${megabytes(activity.totalBytes)} · ${Math.round(activity.progress * 100)}%`; }
 function LinkedDescription({ text, expanded }: { text: string; expanded: boolean }) { const styles = useStyles(); const parts = text.split(/((?:https?:\/\/|www\.)[^\s]+)/gi); return <Text numberOfLines={expanded ? undefined : 3} style={styles.description}>{parts.map((part, index) => /^(?:https?:\/\/|www\.)/i.test(part) ? <Text key={`${part}-${index}`} style={styles.descriptionLink} onPress={() => void Linking.openURL(part.startsWith('www.') ? `https://${part}` : part)}>{part}</Text> : part)}</Text>; }
-function SeriesWatchSection({ context, currentVideoID }: { context: import('@/types/api').SeriesContext; currentVideoID: string }) { const styles = useStyles(); const { t } = useI18n(); const current = context.episodes[context.current_index]; return <View style={styles.contextCard}><PressableScale onPress={() => router.push({ pathname: '/series/[id]', params: { id: context.series.id } })} style={styles.contextHeading}><View style={styles.contextCopy}><Text style={styles.contextKicker}>{t('NOW WATCHING')}</Text><Text style={styles.contextTitle}>{context.series.title}</Text><Text style={styles.contextMeta}>{t('Season')} {current?.season_number} · {t('Episode')} {current?.episode_number}</Text></View><Ionicons name="chevron-forward" color={colors.textMuted} size={20} /></PressableScale><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.episodeRail}>{context.episodes.filter((item) => item.season_number === current?.season_number).map((item) => <PressableScale key={item.id} onPress={() => item.video_id !== currentVideoID && router.replace({ pathname: '/video/[id]', params: { id: item.video_id } })} style={[styles.watchEpisode, item.video_id === currentVideoID && styles.watchEpisodeActive]}><Image source={resolveMediaURL(item.video?.thumbnail_url || context.series.backdrop_url)} style={styles.watchThumb} contentFit="cover" /><Text numberOfLines={1} style={styles.watchEpisodeTitle}>E{item.episode_number} · {item.title}</Text></PressableScale>)}</ScrollView></View>; }
+function SeriesWatchSection({ context, currentVideoID }: { context: import('@/types/api').SeriesContext; currentVideoID: string }) { const styles = useStyles(); const { t } = useI18n(); const current = context.episodes[context.current_index]; return <View style={styles.contextCard}><PressableScale onPress={() => router.push({ pathname: '/series/[id]', params: { id: context.series.id } })} style={styles.contextHeading}><View style={styles.contextCopy}><Text style={styles.contextKicker}>{t('NOW WATCHING')}</Text><Text style={styles.contextTitle}>{context.series.title}</Text><Text style={styles.contextMeta}>{t('Season')} {current?.season_number} · {t('Episode')} {current?.episode_number}</Text></View><Ionicons name="chevron-forward" color={colors.textMuted} size={20} /></PressableScale><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.episodeRail}>{context.episodes.filter((item) => item.season_number === current?.season_number).map((item) => <PressableScale key={item.id} onPress={() => item.video_id !== currentVideoID && openVideo(item.video_id)} style={[styles.watchEpisode, item.video_id === currentVideoID && styles.watchEpisodeActive]}><Image source={resolveMediaURL(item.video?.thumbnail_url || context.series.backdrop_url)} style={styles.watchThumb} contentFit="cover" /><Text numberOfLines={1} style={styles.watchEpisodeTitle}>E{item.episode_number} · {item.title}</Text></PressableScale>)}</ScrollView></View>; }
+function MusicInVideoCard({ track }: { track: MusicTrack }) {
+  const styles = useStyles();
+  const { t } = useI18n();
+  return <View style={styles.musicCard}>
+    <Image source={musicImage(track.cover_url, 'sm')} style={styles.musicCover} contentFit="cover" />
+    <View style={styles.musicCopy}>
+      <Text style={styles.contextKicker}>{t('Music in this video').toLocaleUpperCase()}</Text>
+      <Text numberOfLines={1} style={styles.musicTitle}>{track.title}</Text>
+      <Text numberOfLines={1} style={styles.contextMeta}>{track.artist_name}</Text>
+      <View style={styles.musicActions}>
+        <PressableScale onPress={() => router.push(`/music/tracks/${track.slug}`)} style={styles.musicListen}><Ionicons name="musical-notes" color={colors.onAccent} size={14} /><Text style={styles.musicListenText}>{t('Listen')}</Text></PressableScale>
+        {!!track.release_slug && <PressableScale onPress={() => router.push(`/music/releases/${track.release_slug}`)} style={styles.musicAlbum}><Ionicons name="disc-outline" color={colors.text} size={14} /><Text style={styles.musicAlbumText}>{t('Open album')}</Text></PressableScale>}
+      </View>
+    </View>
+  </View>;
+}
 function MovieWatchSection({ movie }: { movie: import('@/types/api').Movie }) { const styles = useStyles(); const { t } = useI18n(); return <PressableScale onPress={() => router.push({ pathname: '/movies/[id]', params: { id: movie.id } })} style={styles.movieContext}><Image source={resolveMediaURL(movie.poster_url)} style={styles.moviePoster} contentFit="cover" /><View style={styles.contextCopy}><Text style={styles.contextKicker}>{t('GILTUBE MOVIE')}</Text><Text style={styles.contextTitle}>{movie.title}</Text><Text numberOfLines={2} style={styles.contextMeta}>{movie.release_year} · {(movie.genres || []).join(' · ')}</Text></View><Ionicons name="chevron-forward" color={colors.textMuted} size={20} /></PressableScale>; }
-function TrailerSeriesSection({ series }: { series: import('@/types/api').Series }) { const styles = useStyles(); const { t } = useI18n(); return <View style={styles.trailerCard}><Image source={resolveMediaURL(series.poster_url || series.backdrop_url)} style={styles.trailerPoster} contentFit="cover" /><View style={styles.trailerCopy}><Text style={styles.contextKicker}>{t('SERIES TRAILER')}</Text><Text numberOfLines={2} style={styles.contextTitle}>{series.title}</Text><Text numberOfLines={3} style={styles.contextMeta}>{series.synopsis}</Text>{!!series.first_episode?.video_id && <PressableScale onPress={() => router.replace({ pathname: '/video/[id]', params: { id: series.first_episode!.video_id } })} style={styles.trailerButton}><Ionicons name="play" color={colors.onAccent} size={15} /><Text style={styles.trailerButtonText}>{t('Watch series')}</Text></PressableScale>}</View></View>; }
-function TrailerMovieSection({ movie }: { movie: import('@/types/api').Movie }) { const styles = useStyles(); const { t } = useI18n(); return <View style={styles.trailerCard}><Image source={resolveMediaURL(movie.poster_url || movie.backdrop_url)} style={styles.trailerPoster} contentFit="cover" /><View style={styles.trailerCopy}><Text style={styles.contextKicker}>{t('MOVIE TRAILER')}</Text><Text numberOfLines={2} style={styles.contextTitle}>{movie.title}</Text><Text numberOfLines={3} style={styles.contextMeta}>{movie.synopsis}</Text>{!!movie.video_id && <PressableScale onPress={() => router.replace({ pathname: '/video/[id]', params: { id: movie.video_id } })} style={styles.trailerButton}><Ionicons name="play" color={colors.onAccent} size={15} /><Text style={styles.trailerButtonText}>{t('Watch movie')}</Text></PressableScale>}</View></View>; }
+function TrailerSeriesSection({ series }: { series: import('@/types/api').Series }) { const styles = useStyles(); const { t } = useI18n(); return <View style={styles.trailerCard}><Image source={resolveMediaURL(series.poster_url || series.backdrop_url)} style={styles.trailerPoster} contentFit="cover" /><View style={styles.trailerCopy}><Text style={styles.contextKicker}>{t('SERIES TRAILER')}</Text><Text numberOfLines={2} style={styles.contextTitle}>{series.title}</Text><Text numberOfLines={3} style={styles.contextMeta}>{series.synopsis}</Text>{!!series.first_episode?.video_id && <PressableScale onPress={() => openVideo(series.first_episode!.video_id)} style={styles.trailerButton}><Ionicons name="play" color={colors.onAccent} size={15} /><Text style={styles.trailerButtonText}>{t('Watch series')}</Text></PressableScale>}</View></View>; }
+function TrailerMovieSection({ movie }: { movie: import('@/types/api').Movie }) { const styles = useStyles(); const { t } = useI18n(); return <View style={styles.trailerCard}><Image source={resolveMediaURL(movie.poster_url || movie.backdrop_url)} style={styles.trailerPoster} contentFit="cover" /><View style={styles.trailerCopy}><Text style={styles.contextKicker}>{t('MOVIE TRAILER')}</Text><Text numberOfLines={2} style={styles.contextTitle}>{movie.title}</Text><Text numberOfLines={3} style={styles.contextMeta}>{movie.synopsis}</Text>{!!movie.video_id && <PressableScale onPress={() => openVideo(movie.video_id)} style={styles.trailerButton}><Ionicons name="play" color={colors.onAccent} size={15} /><Text style={styles.trailerButtonText}>{t('Watch movie')}</Text></PressableScale>}</View></View>; }
 function CommentNode({ comment, focusedCommentID, highlightedCommentID, actorID, signedIn, busy, depth = 0, onRequireAccount, onReply, onToggleLike, onDelete }: { comment: Comment; focusedCommentID: string; highlightedCommentID: string; actorID: string; signedIn: boolean; busy: boolean; depth?: number; onRequireAccount: () => boolean; onReply: (parentID: string, text: string) => Promise<void>; onToggleLike: (comment: Comment) => void; onDelete: (comment: Comment) => void }) {
   const styles = useStyles();
   const { t, compactNumber, relative } = useI18n();
@@ -439,6 +484,8 @@ function prioritizeCommentTree(comment: Comment, commentID: string): Comment { c
 function clock(value: number) { const safe = Math.max(0, Math.floor(value || 0)); const minutes = Math.floor(safe / 60); const seconds = safe % 60; return `${minutes}:${seconds.toString().padStart(2, '0')}`; }
 const useStyles = makeStyles(() => ({
   screen: { flex: 1, backgroundColor: colors.screen }, playerShell: { width: '100%', aspectRatio: 16 / 9, overflow: 'hidden', backgroundColor: colors.black, zIndex: 2 }, playerFullscreen: { position: 'absolute', inset: 0, width: 'auto', height: 'auto', aspectRatio: undefined, zIndex: 100 }, fullscreenPartyChat: { position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 140, width: '36%', minWidth: 280, maxWidth: 390, paddingHorizontal: 8, backgroundColor: 'rgba(0,0,0,.34)', borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: 'rgba(255,255,255,.16)' }, fullscreenPartyChatOpen: { position: 'absolute', right: 12, zIndex: 140, width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(30,30,34,.9)', borderWidth: 1, borderColor: 'rgba(255,255,255,.18)' }, fullscreenPartyChatBadge: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentBright }, fullscreenPartyChatBadgeText: { color: colors.onAccent, fontSize: 8, fontWeight: '900' }, playerLoading: { position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center', gap: 10 }, buffering: { position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center', zIndex: 3 }, bufferingDisc: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,.62)' }, playerError: { color: withAlpha(colors.white, .66), fontSize: 12, paddingHorizontal: 24, textAlign: 'center' }, seekFeedback: { position: 'absolute', top: '31%', zIndex: 5, minWidth: 102, alignItems: 'center', gap: 5, paddingVertical: 14, borderRadius: 52, backgroundColor: 'rgba(0,0,0,.58)' }, seekFeedbackBack: { left: '13%' }, seekFeedbackForward: { right: '13%' }, seekFeedbackText: { color: colors.white, fontSize: 10, fontWeight: '800' }, playerChrome: { position: 'absolute', inset: 0, zIndex: 4, alignItems: 'center' }, swipeHandle: { position: 'absolute', top: 8, width: 42, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,.7)' }, close: { position: 'absolute', top: 10, right: 10, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,.68)' }, centerPlay: { position: 'absolute', top: '40%', width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,.56)' }, compactControls: { position: 'absolute', left: 8, right: 8, bottom: 7, height: 43, borderRadius: 12, paddingHorizontal: 6, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,.68)' }, controlButton: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }, controlTime: { color: colors.white, fontSize: 9, fontWeight: '700', marginLeft: 1 }, controlSpacer: { flex: 1 }, playerProgress: { position: 'absolute', left: 13, right: 13, bottom: 38, height: 24, justifyContent: 'center', zIndex: 5 }, playerProgressTrack: { height: 7, overflow: 'hidden', borderRadius: 4, backgroundColor: 'rgba(255,255,255,.34)' }, playerProgressFill: { height: '100%', backgroundColor: colors.accentBright }, playerProgressThumb: { position: 'absolute', width: 15, height: 15, marginLeft: -7.5, borderRadius: 8, backgroundColor: colors.accentBright, borderWidth: 2, borderColor: colors.white }, skipIntro: { position: 'absolute', right: 14, bottom: 69, height: 39, borderRadius: radii.md, borderWidth: 1, borderColor: 'rgba(255,255,255,.45)', paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,.76)' }, skipIntroText: { color: colors.white, fontSize: 12, fontWeight: '900' },
+  releasedPoster: { opacity: .55 }, releasedPlay: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,.62)' },
+  musicCard: { marginHorizontal: 20, marginTop: 14, padding: 12, borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: 13 }, musicCover: { width: 76, height: 76, borderRadius: radii.md, backgroundColor: colors.surfaceStrong }, musicCopy: { flex: 1, minWidth: 0 }, musicTitle: { color: colors.text, fontSize: 15, fontWeight: '900', marginTop: 4 }, musicActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 9 }, musicListen: { height: 32, paddingHorizontal: 12, borderRadius: radii.pill, backgroundColor: colors.accent, flexDirection: 'row', alignItems: 'center', gap: 6 }, musicListenText: { color: colors.onAccent, fontSize: 11, fontWeight: '900' }, musicAlbum: { height: 32, paddingHorizontal: 12, borderRadius: radii.pill, backgroundColor: colors.surfaceStrong, flexDirection: 'row', alignItems: 'center', gap: 6 }, musicAlbumText: { color: colors.text, fontSize: 11, fontWeight: '800' },
   introOverlay: { position: 'absolute', inset: 0, zIndex: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.black },
   introSkip: { position: 'absolute', right: 14, bottom: 18, height: 39, borderRadius: radii.md, borderWidth: 1, borderColor: 'rgba(255,255,255,.45)', paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,.76)' }, loader: { flex: 1 }, content: { paddingTop: 20, paddingBottom: 20 }, title: { color: colors.text, fontSize: 24, lineHeight: 29, fontWeight: '900', letterSpacing: -.6, paddingHorizontal: 20 }, metaRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 9, paddingHorizontal: 20 }, meta: { color: colors.textMuted, fontSize: 13 }, offlineBadge: { height: 24, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, borderRadius: radii.pill, backgroundColor: 'rgba(34,197,94,.12)', borderWidth: 1, borderColor: 'rgba(34,197,94,.28)' }, offlineBadgeText: { color: colors.success, fontSize: 9, fontWeight: '900' }, hdrBadge: { height: 18, justifyContent: 'center', paddingHorizontal: 5, marginLeft: 6, borderRadius: 4, backgroundColor: '#f5c518' }, hdrBadgeText: { color: '#111', fontSize: 9, fontWeight: '900', letterSpacing: .4 },
   actions: { gap: 9, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 3 }, action: { height: 42, flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: radii.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 14 }, actionActive: { borderColor: withAlpha(colors.accentBright, .42), backgroundColor: withAlpha(colors.accentDark, .18) }, actionText: { color: colors.text, fontSize: 12, fontWeight: '800' }, actionTextActive: { color: colors.accentBright }, downloadStatus: { marginHorizontal: 20, marginTop: 10 }, downloadStatusText: { color: colors.textMuted, fontSize: 11 }, progressTrack: { height: 3, overflow: 'hidden', borderRadius: 2, backgroundColor: colors.surfaceStrong, marginTop: 7 }, progressFill: { height: '100%', backgroundColor: colors.accentBright },

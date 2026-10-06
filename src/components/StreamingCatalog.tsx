@@ -8,6 +8,7 @@ import { useI18n } from '@/i18n';
 import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import type { Movie, Series } from '@/types/api';
 import { resolveMediaURL } from '@/utils/media';
+import { openVideo } from '@/player/navigation';
 
 type CatalogItem = Movie | Series;
 
@@ -24,7 +25,7 @@ export function StreamingHero({ item, kind }: { item: CatalogItem; kind: 'movie'
   return <View style={styles.hero}>
     <Image source={resolveMediaURL(item.backdrop_url || item.poster_url)} style={StyleSheet.absoluteFill} contentFit="cover" />
     <LinearGradient colors={['rgba(0,0,0,.06)', withAlpha(colors.canvas, .45), colors.canvas]} locations={[0, .55, 1]} style={StyleSheet.absoluteFill} />
-    <View style={styles.heroCopy}><Text style={styles.kicker}>{t('FEATURED')} {t(kind === 'movie' ? 'MOVIE' : 'SERIES')}</Text><Text numberOfLines={2} style={styles.heroTitle}>{item.title}</Text><Text numberOfLines={3} style={styles.synopsis}>{item.synopsis}</Text><View style={styles.buttons}>{!!playID && <PressableScale onPress={() => router.push({ pathname: '/video/[id]', params: { id: playID } })} style={styles.play}><Text style={styles.playText}>{t('▶ Play')}</Text></PressableScale>}<PressableScale onPress={() => openDetails(item, kind)} style={styles.info}><Text style={styles.infoText}>{t('Details')}</Text></PressableScale></View></View>
+    <View style={styles.heroCopy}><Text style={styles.kicker}>{t('FEATURED')} {t(kind === 'movie' ? 'MOVIE' : 'SERIES')}</Text><Text numberOfLines={2} style={styles.heroTitle}>{item.title}</Text><Text numberOfLines={3} style={styles.synopsis}>{item.synopsis}</Text><View style={styles.buttons}>{!!playID && <PressableScale onPress={() => openVideo(playID)} style={styles.play}><Text style={styles.playText}>{t('▶ Play')}</Text></PressableScale>}<PressableScale onPress={() => openDetails(item, kind)} style={styles.info}><Text style={styles.infoText}>{t('Details')}</Text></PressableScale></View></View>
   </View>;
 }
 

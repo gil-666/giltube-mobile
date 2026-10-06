@@ -7,6 +7,9 @@ const nativeStaticPaths = new Set([
   '/go-live',
   '/login',
   '/movies',
+  '/music',
+  '/music/downloads',
+  '/music/search',
   '/my-channels',
   '/notification-settings',
   '/notifications',
@@ -26,6 +29,9 @@ const nativeDynamicPaths = [
   /^\/channel\/[^/]+$/,
   /^\/live\/[^/]+$/,
   /^\/movies\/[^/]+$/,
+  /^\/music\/artists\/[^/]+$/,
+  /^\/music\/releases\/[^/]+$/,
+  /^\/music\/tracks\/[^/]+$/,
   /^\/news\/[^/]+$/,
   /^\/playlist\/[^/]+$/,
   /^\/playlists\/[^/]+$/,
@@ -41,6 +47,9 @@ function nativePathFor(normalized: string): string | null {
     const channelID = liveChatMatch[1] || liveChatMatch[2];
     return channelID ? `/live/${channelID}` : null;
   }
+
+  // The web music library is the queue; the app's equivalent is the Music tab.
+  if (normalized === '/music/library') return '/music';
 
   if (nativeStaticPaths.has(normalized) || nativeDynamicPaths.some((pattern) => pattern.test(normalized))) {
     return normalized;

@@ -15,6 +15,7 @@ import { useI18n } from '@/i18n';
 import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 import { formatPlaybackTime, isResumable } from '@/utils/watchProgress';
+import { openVideo } from '@/player/navigation';
 
 export default function MovieDetailsScreen() {
   const styles = useStyles();
@@ -27,7 +28,7 @@ export default function MovieDetailsScreen() {
   const { status } = useAuth();
   const progress = useQuery({ queryKey: ['watch-progress-detail', movie?.video_id], queryFn: () => giltubeAPI.watchProgress(movie!.video_id!), enabled: status === 'signedIn' && !!movie?.video_id, retry: false });
   const resume = isResumable(progress.data?.progress) ? progress.data.progress : null;
-  const openMovie = (startOver = false) => movie?.video_id && router.push({ pathname: '/video/[id]', params: startOver ? { id: movie.video_id, startOver: '1' } : { id: movie.video_id } });
+  const openMovie = (startOver = false) => movie?.video_id && openVideo(movie.video_id, { startOver });
   const related = movie ? (catalog.data?.movies || []).filter((item) => item.id !== movie.id && item.genres?.some((genre) => movie.genres?.includes(genre))).slice(0, 12) : [];
   return <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: insets.bottom + 48 }}>
     <View style={[styles.top, { paddingTop: insets.top + 8 }]}><PressableScale onPress={() => router.back()} style={styles.round}><Ionicons name="chevron-back" color={colors.white} size={25} /></PressableScale></View>
@@ -35,7 +36,7 @@ export default function MovieDetailsScreen() {
     {!!movie && <>
       <View style={styles.hero}><Image source={resolveMediaURL(movie.backdrop_url || movie.poster_url)} style={StyleSheet.absoluteFill} contentFit="cover" /><LinearGradient colors={['rgba(0,0,0,.08)', withAlpha(colors.canvas, 0.45), colors.canvas]} locations={[0, .58, 1]} style={StyleSheet.absoluteFill} /></View>
       <View style={styles.copy}><View style={styles.identity}><Image source={resolveMediaURL(movie.poster_url)} style={styles.poster} contentFit="cover" /><View style={styles.identityCopy}><Text style={styles.kicker}>{t('GILTUBE MOVIE')}</Text><Text style={styles.title}>{movie.title}</Text><Text style={styles.meta}>{[movie.release_year, ...(movie.genres || [])].filter(Boolean).join('  ·  ')}</Text></View></View>
-        <View style={styles.buttons}>{!!movie.video_id && <PressableScale onPress={() => openMovie()} style={styles.play}><Ionicons name="play" color={colors.onText} size={19} /><Text numberOfLines={1} style={styles.playText}>{resume ? `${t('Resume')} · ${formatPlaybackTime(resume.position_seconds)}` : t('Play movie')}</Text></PressableScale>}{!!resume && <PressableScale accessibilityLabel={t('Start over')} onPress={() => openMovie(true)} style={styles.trailer}><Ionicons name="refresh" color={colors.text} size={18} /><Text style={styles.trailerText}>{t('Start over')}</Text></PressableScale>}{!!movie.trailer_video_id && <PressableScale onPress={() => router.push({ pathname: '/video/[id]', params: { id: movie.trailer_video_id } })} style={styles.trailer}><Ionicons name="film-outline" color={colors.text} size={18} /><Text style={styles.trailerText}>{t('Trailer')}</Text></PressableScale>}</View>
+        <View style={styles.buttons}>{!!movie.video_id && <PressableScale onPress={() => openMovie()} style={styles.play}><Ionicons name="play" color={colors.onText} size={19} /><Text numberOfLines={1} style={styles.playText}>{resume ? `${t('Resume')} · ${formatPlaybackTime(resume.position_seconds)}` : t('Play movie')}</Text></PressableScale>}{!!resume && <PressableScale accessibilityLabel={t('Start over')} onPress={() => openMovie(true)} style={styles.trailer}><Ionicons name="refresh" color={colors.text} size={18} /><Text style={styles.trailerText}>{t('Start over')}</Text></PressableScale>}{!!movie.trailer_video_id && <PressableScale onPress={() => openVideo(movie.trailer_video_id!)} style={styles.trailer}><Ionicons name="film-outline" color={colors.text} size={18} /><Text style={styles.trailerText}>{t('Trailer')}</Text></PressableScale>}</View>
         <Text style={styles.synopsis}>{movie.synopsis}</Text>
         {!!movie.directors?.length && <Credit label={t('Directed by')} value={movie.directors.join(', ')} />}
         {!!movie.cast?.length && <Credit label={t('Cast')} value={movie.cast.join(', ')} />}

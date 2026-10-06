@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, Tabs } from 'expo-router';
 import { useState } from 'react';
-import { ColorValue, Platform, StyleSheet, Text, View } from 'react-native';
+import { ColorValue, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/auth/AuthProvider';
 import { PressableScale } from '@/components/PressableScale';
 import { SwipeSheet } from '@/components/SwipeSheet';
 import { useI18n } from '@/i18n';
+import { tabBarBottomInset, tabBarHeight } from '@/player/miniPlayerLayout';
 import { colors, makeStyles, radii } from '@/theme/tokens';
 
 const icon = (name: keyof typeof Ionicons.glyphMap) => {
@@ -27,7 +28,7 @@ export default function TabLayout() {
   const { t } = useI18n();
   const { status } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
-  const bottomInset = Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 8);
+  const bottomInset = tabBarBottomInset(insets.bottom);
 
   const openCreate = () => {
     if (status !== 'signedIn') { router.push('/login'); return; }
@@ -46,7 +47,7 @@ export default function TabLayout() {
         tabBarInactiveTintColor: colors.textDim,
         tabBarStyle: {
           position: 'absolute',
-          height: (Platform.OS === 'ios' ? 52 : 60) + bottomInset,
+          height: tabBarHeight(bottomInset),
           paddingTop: 7,
           paddingBottom: bottomInset,
           borderTopColor: colors.border,
@@ -58,6 +59,7 @@ export default function TabLayout() {
     >
       <Tabs.Screen name="index" options={{ title: t('Home'), tabBarIcon: icon('home') }} />
       <Tabs.Screen name="subscriptions" options={{ title: t('Subs'), tabBarIcon: icon('albums') }} />
+      <Tabs.Screen name="music" options={{ title: t('Music'), tabBarIcon: icon('musical-notes') }} />
       <Tabs.Screen name="create" listeners={{ tabPress: (event) => { event.preventDefault(); openCreate(); } }} options={{ title: t('Create'), tabBarIcon: CreateIcon, tabBarLabelStyle: styles.createLabel }} />
       <Tabs.Screen name="library" options={{ title: t('Library'), tabBarIcon: icon('play-circle') }} />
       <Tabs.Screen name="profile" options={{ title: t('You'), tabBarIcon: icon('person-circle') }} />

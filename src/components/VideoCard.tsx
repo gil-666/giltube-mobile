@@ -9,18 +9,19 @@ import { useI18n } from '@/i18n';
 import { colors, makeStyles, radii } from '@/theme/tokens';
 import type { RelatedMedia, Video } from '@/types/api';
 import { resolveMediaURL } from '@/utils/media';
+import { openVideo } from '@/player/navigation';
 
 export function VideoCard({ video, index = 0, progress = 0 }: { video: Video; index?: number; progress?: number }) {
   const styles = useStyles();
   const { t, compactNumber } = useI18n();
-  // Push (even from a watch screen) so Back returns to the previous video.
-  const openVideo = () => router.push({ pathname: '/video/[id]', params: { id: video.id } });
+  // From a watch screen this replaces it: only one watch screen exists.
+  const open = () => openVideo(video);
   return (
     <Animated.View entering={FadeInRight.delay(Math.min(index, 6) * 55).duration(360)}>
       <PressableScale
         accessibilityRole="button"
         accessibilityLabel={`${t('Play')} ${video.title}`}
-        onPress={openVideo}
+        onPress={open}
         style={styles.card}
       >
         <View style={styles.imageWrap}><Image source={resolveMediaURL(video.thumbnail_url)} style={styles.image} contentFit="cover" transition={180} cachePolicy="memory-disk" />{progress > 0 && <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.min(100, Math.max(0, progress))}%` }]} /></View>}</View>

@@ -1,12 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEvent } from 'expo';
-import { router, usePathname } from 'expo-router';
+import { router, useNavigationContainerRef, usePathname } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { giltubeAPI } from '@/api/giltube';
 import { useAuth } from '@/auth/AuthProvider';
@@ -14,6 +13,9 @@ import { useActiveChannel } from '@/channels/ChannelProvider';
 import { PressableScale } from '@/components/PressableScale';
 import { useDownloads } from '@/downloads/DownloadProvider';
 import { useI18n } from '@/i18n';
+import { claimMediaFocus, onMediaFocusChange, releaseMediaFocus } from '@/player/mediaFocus';
+import { MINI_PLAYER_HEIGHT, useMiniPlayerLayout } from '@/player/miniPlayerLayout';
+import { enforceSingleWatchScreen, isWatchPath, openLive, openVideo, setPlayerNavigationRef } from '@/player/navigation';
 import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import type { LiveStream, Video, WatchPartyEvent, WatchPartySnapshot } from '@/types/api';
 import { useAppSettings } from '@/settings/AppSettingsProvider';
@@ -194,6 +196,7 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     const masterURI = sourceUri || offline?.fileUri || resolveMediaURL(nextVideo.hls_path);
     if (!masterURI) throw new Error('This video does not have a playable source.');
 
+    claimMediaFocus('video');
     sourceRef.current = masterURI;
     sdrMasterRef.current = masterURI;
     hdrMasterRef.current = '';
@@ -254,6 +257,7 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     const uri = resolveMediaURL(stream.playback_url_public || stream.playback_url);
     if (!uri) throw new Error('This live stream does not have a playable source.');
     const operation = ++operationRef.current;
+    claimMediaFocus('video');
     sourceRef.current = uri;
     sdrMasterRef.current = '';
     hdrMasterRef.current = '';
@@ -423,7 +427,13 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     setPlaybackMasterURL('');
     applyingRemoteRef.current = false;
     void replacePlayerSource(null).catch(() => undefined);
+    releaseMediaFocus('video');
   }, [applyHDR, player, replacePlayerSource]);
+
+  // Only one thing plays at a time: GilTube Music starting stops the video.
+  useEffect(() => onMediaFocusChange((owner) => {
+    if (owner === 'music' && modeRef.current !== 'hidden') dismiss();
+  }), [dismiss]);
 
   const showToast = useCallback((message: string) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -620,18 +630,25 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     return () => clearInterval(timer);
   }, [account?.id, activeChannelID, isPlaying, player, watchParty]);
 
+  // Leaving the watch screen (back, swipe, or opening any other screen on top)
+  // minimizes the expanded player. A watch route on top owns the player, so
+  // arriving at one never minimizes. Runs on route changes only, so expanding
+  // just before navigating to a watch screen is never undone.
   useEffect(() => {
-    const expandedPath = video ? `/video/${video.id}` : liveStream ? `/live/${liveStream.channel_id}` : '';
-    if ((!video && !liveStream) || mode !== 'expanded' || pathname === expandedPath) return;
+    if (isWatchPath(pathname)) return;
     const timer = setTimeout(() => {
-      // Re-check with live values: going back to an earlier watch screen loads
-      // its video in the same tick, and must not be minimized by this stale run.
-      const currentVideo = videoRef.current;
-      const currentPath = currentVideo ? `/video/${currentVideo.id}` : expandedPath;
-      if (modeRef.current === 'expanded' && pathnameRef.current !== currentPath) setMode('minimized');
+      if (modeRef.current === 'expanded' && !isWatchPath(pathnameRef.current)) setMode('minimized');
     }, 0);
     return () => clearTimeout(timer);
-  }, [liveStream, mode, pathname, video, watchParty]);
+  }, [pathname]);
+
+  // Exactly one watch screen may exist in the stack (see navigation.ts).
+  const navigationRef = useNavigationContainerRef();
+  useEffect(() => {
+    setPlayerNavigationRef(navigationRef);
+    const unsubscribe = navigationRef.addListener('state', () => enforceSingleWatchScreen());
+    return () => { unsubscribe(); setPlayerNavigationRef(null); };
+  }, [navigationRef]);
 
   useEffect(() => {
     if (mode === 'minimized') {
@@ -664,13 +681,13 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
 
 function PlayerToast({ message }: { message: string }) {
   const styles = useStyles();
-  const insets = useSafeAreaInsets();
+  const layout = useMiniPlayerLayout();
   return (
     <Animated.View
       pointerEvents="none"
       entering={FadeInDown.duration(220)}
       exiting={FadeOutDown.duration(160)}
-      style={[styles.toast, { bottom: Math.max(insets.bottom, 10) + 76 }]}
+      style={[styles.toast, { bottom: layout.bottom + MINI_PLAYER_HEIGHT + 8 }]}
     >
       <Ionicons name="information-circle" color={colors.accentBright} size={20} />
       <Text style={styles.toastText}>{message}</Text>
@@ -680,19 +697,22 @@ function PlayerToast({ message }: { message: string }) {
 
 function MiniPlayer() {
   const styles = useStyles();
-  const insets = useSafeAreaInsets();
+  const layout = useMiniPlayerLayout();
+  const pathname = usePathname();
   const { t } = useI18n();
   const { account } = useAuth();
   const { player, video, liveStream, mode, watchParty, hdr, expand, dismiss, sendWatchPartyPlayback, leaveWatchParty } = usePlayer();
   const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
   const media = video || liveStream;
-  if (!media || mode !== 'minimized') return null;
+  // Never over a watch screen (it owns the player) or where layout says no.
+  if (!media || mode !== 'minimized' || !layout.visible || isWatchPath(pathname)) return null;
 
+  // Opens the one watch screen for this media; it adopts the playing video
+  // instead of reloading it.
   const open = () => {
     expand();
-    if (watchParty && video) router.push({ pathname: '/video/[id]', params: { id: video.id, party: watchParty.party.id } });
-    else if (liveStream) router.push({ pathname: '/live/[channelId]', params: { channelId: liveStream.channel_id } });
-    else if (video) router.push({ pathname: '/video/[id]', params: { id: video.id } });
+    if (liveStream) openLive(liveStream.channel_id);
+    else if (video) openVideo(video, watchParty ? { partyID: watchParty.party.id } : undefined);
   };
 
   const togglePlayback = () => {
@@ -713,7 +733,7 @@ function MiniPlayer() {
     <Animated.View
       entering={FadeInDown.duration(260)}
       exiting={FadeOutDown.duration(180)}
-      style={[styles.mini, { bottom: Math.max(insets.bottom, 8) + 66 }]}
+      style={[styles.mini, { bottom: layout.bottom }]}
     >
       <PressableScale onPress={open} style={styles.preview}>
         {/* Android only presents HDR on a SurfaceView; TextureView washes it out. */}
@@ -762,7 +782,7 @@ const useStyles = makeStyles(() => ({
     zIndex: 100,
     left: 10,
     right: 10,
-    height: 68,
+    height: MINI_PLAYER_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     overflow: 'hidden',

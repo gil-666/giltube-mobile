@@ -11,6 +11,8 @@ import { AuthProvider } from '@/auth/AuthProvider';
 import { AppLinkVerificationPrompt } from '@/app-links/AppLinkVerificationPrompt';
 import { ChannelProvider } from '@/channels/ChannelProvider';
 import { DownloadProvider } from '@/downloads/DownloadProvider';
+import { MusicDownloadsProvider } from '@/music/MusicDownloadsProvider';
+import { MusicPlayerProvider } from '@/music/MusicPlayerProvider';
 import { StartupNewsPanel } from '@/news/StartupNewsPanel';
 import { NotificationProvider } from '@/notifications/NotificationProvider';
 import { PlayerProvider } from '@/player/PlayerProvider';
@@ -37,12 +39,12 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider><ThemeProvider>
             <AppSettingsProvider><ChannelProvider><NotificationProvider><DownloadProvider>
-              <PlayerProvider>
+              <PlayerProvider><MusicDownloadsProvider><MusicPlayerProvider>
                 <AppLinkVerificationPrompt />
                 <PlayStoreUpdatePrompt />
                 <ThemedNavigator />
                 <StartupNewsPanel />
-              </PlayerProvider>
+              </MusicPlayerProvider></MusicDownloadsProvider></PlayerProvider>
             </DownloadProvider></NotificationProvider></ChannelProvider></AppSettingsProvider>
           </ThemeProvider></AuthProvider>
         </QueryClientProvider>
@@ -92,6 +94,13 @@ function ThemedNavigator() {
         <Stack.Screen name="themes/index" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="themes/[code]" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="news/[id]" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="music/releases/[slug]" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="music/artists/[slug]" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="music/tracks/[slug]" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="music/search" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="music/downloads" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="music/library" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="music/player" options={{ animation: 'slide_from_bottom', gestureEnabled: true }} />
         <Stack.Screen name="auth/callback" options={{ animation: 'none' }} />
       </Stack>
     </View>

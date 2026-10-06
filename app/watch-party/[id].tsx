@@ -25,6 +25,7 @@ export default function WatchPartyResolver() {
         const snapshot = watchParty?.party.id === id ? watchParty : await joinWatchParty(id);
         if (cancelled) return;
         expand();
+        // Replaces this resolver screen; any other watch screen is removed (one at a time).
         router.replace({ pathname: '/video/[id]', params: { id: snapshot.video.id, party: id } });
       } catch (reason) {
         if (!cancelled && !isWatchPartyEndedError(reason)) setError(reason instanceof Error ? reason.message : t('This watch party could not be opened.'));

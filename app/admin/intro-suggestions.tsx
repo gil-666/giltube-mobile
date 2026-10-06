@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 
@@ -8,6 +7,7 @@ import { IntroPlayer } from '@/admin/series/IntroPlayer';
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminLoading, AdminNotice, AdminScreen, adminStyles, useIsAdmin } from '@/admin/ui';
 import { useI18n } from '@/i18n';
 import { colors, makeStyles, radii } from '@/theme/tokens';
+import { openVideo } from '@/player/navigation';
 
 type Status = 'pending' | 'approved' | 'rejected' | 'all';
 
@@ -65,7 +65,7 @@ export default function AdminIntroSuggestionsScreen() {
           {!!suggestion.note && <Text style={[adminStyles.text, styles.gap]}>“{suggestion.note}”</Text>}
           {previewID === suggestion.id && !!suggestion.video_hls_path && <View style={styles.gap}><IntroPlayer hlsPath={suggestion.video_hls_path} start={suggestion.intro_start_seconds} end={suggestion.intro_end_seconds} /></View>}
           <AdminButtons>
-            <AdminButton compact icon="play-outline" label={t('Open episode')} onPress={() => router.push({ pathname: '/video/[id]', params: { id: suggestion.video_id } })} />
+            <AdminButton compact icon="play-outline" label={t('Open episode')} onPress={() => openVideo(suggestion.video_id)} />
             <AdminButton compact icon={previewID === suggestion.id ? 'close' : 'eye-outline'} label={previewID === suggestion.id ? t('Close preview') : t('Preview timing')} disabled={!suggestion.video_hls_path} onPress={() => setPreviewID(previewID === suggestion.id ? '' : suggestion.id)} />
             <AdminButton compact variant="primary" icon="checkmark" label={t('Apply timing')} busy={busy} disabled={!pending || !!reviewingID} onPress={() => void review(suggestion, 'approve')} />
             <AdminButton compact variant="danger" icon="close" label={t('Reject')} disabled={!pending || !!reviewingID} onPress={() => void review(suggestion, 'reject')} />

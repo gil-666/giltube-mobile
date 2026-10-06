@@ -1,5 +1,4 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { Text } from 'react-native';
 
@@ -7,6 +6,7 @@ import { invalidateSeries, seriesAPI, uploadSeriesVideo, type AdminSeries } from
 import { VideoPicker } from './VideoPicker';
 import { AdminButton, AdminButtons, AdminCard, AdminError, AdminField, AdminNotice, AdminProgress, AdminSection, adminStyles, pickFile } from '@/admin/ui';
 import { useI18n } from '@/i18n';
+import { openVideo } from '@/player/navigation';
 
 export function TrailerSection({ series }: { series: AdminSeries }) {
   const { t } = useI18n();
@@ -60,7 +60,7 @@ export function TrailerSection({ series }: { series: AdminSeries }) {
       <AdminButtons>
         <AdminButton variant="primary" icon="cloud-upload-outline" label={uploading ? `${progress}%` : t('Upload trailer')} busy={uploading} disabled={linking} onPress={() => void upload()} />
         <AdminButton icon="albums-outline" label={t('Pick existing video')} busy={linking} disabled={uploading} onPress={() => setPickerOpen(true)} />
-        {!!series.trailer_video_id && <AdminButton icon="play-outline" label={t('Open')} onPress={() => router.push({ pathname: '/video/[id]', params: { id: series.trailer_video_id } })} />}
+        {!!series.trailer_video_id && <AdminButton icon="play-outline" label={t('Open')} onPress={() => openVideo(series.trailer_video_id!)} />}
       </AdminButtons>
       <AdminError error={error} />
       {!!message && <AdminNotice tone="good" text={message} />}

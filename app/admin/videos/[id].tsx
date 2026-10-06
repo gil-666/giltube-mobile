@@ -11,6 +11,7 @@ import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminErro
 import { useI18n } from '@/i18n';
 import { colors, makeStyles, radii } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
+import { openVideo } from '@/player/navigation';
 
 const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
 
@@ -122,7 +123,7 @@ export default function AdminVideoEditorScreen() {
         {!!data.created_at && <Text style={adminStyles.muted}>{t('Uploaded {date}', { date: dateTime(data.created_at) })}</Text>}
         <Text selectable style={[adminStyles.mono, styles.spaced]}>{data.id}</Text>
         <AdminButtons>
-          <AdminButton compact icon="play-outline" label={t('Watch')} onPress={() => router.push({ pathname: '/video/[id]', params: { id: data.id } })} />
+          <AdminButton compact icon="play-outline" label={t('Watch')} onPress={() => openVideo(data.id)} />
           {!!data.channel_id && <AdminButton compact icon="tv-outline" label={t('Channel')} onPress={() => router.push({ pathname: '/admin/channels/[id]', params: { id: data.channel_id, name: data.channel?.name ?? '' } })} />}
           <AdminButton compact icon="checkmark-done-outline" label={t('Verify')} busy={verify.isPending} onPress={() => verify.mutate()} />
         </AdminButtons>

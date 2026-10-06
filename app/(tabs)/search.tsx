@@ -15,6 +15,7 @@ import { useI18n } from '@/i18n';
 import { colors, makeStyles, radii } from '@/theme/tokens';
 import type { SearchResult } from '@/types/api';
 import { resolveMediaURL } from '@/utils/media';
+import { openVideo } from '@/player/navigation';
 
 const historyKey = 'giltube.search-history.v1';
 const historyLimit = 10;
@@ -71,7 +72,7 @@ export default function SearchScreen() {
     if (item.type === 'channel') router.push({ pathname: '/channel/[id]', params: { id: item.id } });
     else if (item.type === 'movie') router.push({ pathname: '/movies/[id]', params: { id: item.id } });
     else if (item.type === 'series') router.push({ pathname: '/series/[id]', params: { id: item.id } });
-    else if (item.type === 'video' || item.video_id) router.push({ pathname: '/video/[id]', params: { id: item.video_id || item.id } });
+    else if (item.type === 'video' || item.video_id) openVideo(item.video_id || item.id);
   };
   const showSuggestions = deferredQuery.length > 0 && deferredQuery !== submittedQuery;
   const suggestionItems = (Array.isArray(suggestions.data?.suggestions) ? suggestions.data.suggestions : [])

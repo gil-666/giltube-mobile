@@ -42,7 +42,7 @@ export default function ProfileScreen() {
       <Menu icon="speedometer-outline" label={t('Creator dashboard')} onPress={() => router.push('/dashboard')} />
       {account?.user_type === 'admin' && <Menu icon="shield-checkmark-outline" label={t('Admin console')} onPress={() => router.push('/admin')} />}
       <Text style={styles.section}>{t('EXPLORE')}</Text>
-      <Menu icon="musical-notes-outline" label={t('GilTube Music')} onPress={() => web('/music')} />
+      <Menu icon="musical-notes-outline" label={t('GilTube Music')} onPress={() => router.push('/music')} />
       <Menu icon="film-outline" label={t('Movies')} onPress={() => router.push('/movies')} />
       <Menu icon="tv-outline" label={t('Series')} onPress={() => router.push('/series')} />
       <Menu icon="person-outline" label={t('Account settings')} onPress={() => web('/account-settings')} />

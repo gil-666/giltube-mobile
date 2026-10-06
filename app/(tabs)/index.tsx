@@ -17,6 +17,8 @@ import { SectionRail } from '@/components/SectionRail';
 import { CatalogRail } from '@/components/StreamingCatalog';
 import { LiveStreamRail } from '@/live/LiveStreamCard';
 import { useI18n } from '@/i18n';
+import { MusicPromoShelf } from '@/music/components/MusicPromoShelf';
+import { openLive, openVideo } from '@/player/navigation';
 import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 
@@ -37,7 +39,7 @@ export default function HomeScreen() {
   const unread = useQuery({ queryKey: ['notification-count'], queryFn: giltubeAPI.unreadNotifications, enabled: signedIn, refetchInterval: 60_000 });
   const hero = home.data?.recommended?.[0] || home.data?.trending?.[0] || home.data?.browse?.[0];
 	const featuredItems = featured.data?.items?.slice(0, 5) || [];
-	const openFeatured = (item: import('@/types/api').FeaturedContent) => { if (item.content_type === 'video') router.push({ pathname: '/video/[id]', params: { id: item.content_id } }); else if (item.content_type === 'live') router.push({ pathname: '/live/[channelId]', params: { channelId: item.channel_id } }); else if (item.content_type === 'movie') router.push({ pathname: '/movies/[id]', params: { id: item.content_id } }); else router.push({ pathname: '/series/[id]', params: { id: item.content_id } }); };
+	const openFeatured = (item: import('@/types/api').FeaturedContent) => { if (item.content_type === 'video') openVideo(item.content_id); else if (item.content_type === 'live') openLive(item.channel_id); else if (item.content_type === 'movie') router.push({ pathname: '/movies/[id]', params: { id: item.content_id } }); else router.push({ pathname: '/series/[id]', params: { id: item.content_id } }); };
 	const onFeaturedScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => setFeaturedIndex(Math.round(event.nativeEvent.contentOffset.x / Math.max(width, 1)));
 	const featuredMeta = (item: import('@/types/api').FeaturedContent) => item.is_live ? t('LIVE NOW') : item.scheduled_for ? `${t('Live')} ${new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(item.scheduled_for))}` : item.channel_name || 'GilTube';
 	useEffect(() => {
@@ -93,7 +95,7 @@ export default function HomeScreen() {
             <Text style={styles.heroBadge}>{t(home.data?.personalized ? 'FOR YOU' : 'FEATURED')}</Text>
             <Text numberOfLines={2} style={styles.heroTitle}>{hero.title}</Text>
             <Text numberOfLines={1} style={styles.heroMeta}>{hero.channel?.name || 'GilTube'} · {compactNumber(hero.views || 0)} {t(hero.views === 1 ? 'view' : 'views')}</Text>
-            <PressableScale onPress={() => router.push({ pathname: '/video/[id]', params: { id: hero.id } })} style={styles.playButton}>
+            <PressableScale onPress={() => openVideo(hero)} style={styles.playButton}>
               <Text style={styles.playButtonText}>{t('▶ Play now')}</Text>
             </PressableScale>
           </Animated.View>
@@ -105,6 +107,7 @@ export default function HomeScreen() {
           <LiveStreamRail streams={live.data || []} />
           {!!recent.data?.items.length && <SectionRail title={t('Continue watching')} subtitle={t('Pick up where you left off')} videos={recent.data.items.map((item) => item.video)} progressByVideoID={progressByVideoID} />}
           <SectionRail title={t('Recommended')} subtitle={home.data.personalized ? t('Picked from what you watch') : undefined} videos={rails.recommended} progressByVideoID={progressByVideoID} />
+          <MusicPromoShelf />
           <SectionRail title={t('Trending now')} videos={rails.trending} progressByVideoID={progressByVideoID} />
           <SectionRail title={t('Trusted channels')} videos={rails.trusted} progressByVideoID={progressByVideoID} />
           <View style={styles.destinations}><PressableScale onPress={() => router.push('/movies')} style={styles.destination}><LinearGradient colors={[colors.accentDark, colors.surface]} style={StyleSheet.absoluteFill} /><Text style={styles.destinationKicker}>GILTUBE</Text><Text style={styles.destinationTitle}>{t('Movies')}</Text><Text style={styles.destinationMeta}>{t('Feature films')}</Text></PressableScale><PressableScale onPress={() => router.push('/series')} style={styles.destination}><LinearGradient colors={['#164e63', colors.surface]} style={StyleSheet.absoluteFill} /><Text style={[styles.destinationKicker, { color: colors.gilid }]}>GILTUBE</Text><Text style={styles.destinationTitle}>{t('Series')}</Text><Text style={styles.destinationMeta}>{t('Episodes & seasons')}</Text></PressableScale></View>

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 
@@ -12,6 +12,7 @@ import { AdminButton, AdminButtons, AdminCard, AdminError, AdminField, AdminLoad
 import { useI18n } from '@/i18n';
 import { colors, makeStyles, radii } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
+import { openVideo } from '@/player/navigation';
 
 export default function AdminSeriesEpisodeScreen() {
   const { episodeId = '', seriesId = '' } = useLocalSearchParams<{ episodeId: string; seriesId: string }>();
@@ -107,7 +108,7 @@ function EpisodeEditor({ episode }: { episode: AdminEpisode }) {
     {!!message && <AdminNotice tone="good" text={message} />}
     <AdminButtons>
       <AdminButton variant="primary" icon="save-outline" label={t('Save')} busy={saving} onPress={() => void save()} />
-      {!!episode.video_id && <AdminButton icon="play-outline" label={t('Open episode')} disabled={processing} onPress={() => router.push({ pathname: '/video/[id]', params: { id: episode.video_id } })} />}
+      {!!episode.video_id && <AdminButton icon="play-outline" label={t('Open episode')} disabled={processing} onPress={() => openVideo(episode.video_id)} />}
     </AdminButtons>
 
     <AdminSection title={t('Content rating')}>

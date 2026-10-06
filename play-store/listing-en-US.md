@@ -32,6 +32,13 @@ Discover more:
 • Follow subscriptions and personalized recommendations
 • Open GilTube links directly in the app
 
+Listen on GilTube Music:
+
+• Stream albums, EPs and singles with a native music player
+• Follow along with synced lyrics and manage your queue
+• Download music in your chosen quality, up to lossless
+• Keep listening in the background
+
 Watch together:
 
 • Tune in to live streams with live chat and polls
