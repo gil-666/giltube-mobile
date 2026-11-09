@@ -5,7 +5,7 @@ import { Text, View } from 'react-native';
 
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminLoading, AdminNotice, AdminProgress, AdminScreen, adminStyles, alertError, confirmAction, useIsAdmin } from '@/admin/ui';
 import { listTranscodeJobs, runTranscodeAction, transcodeKeys } from '@/admin/ingest/api';
-import type { TranscodeAction, TranscodeJob } from '@/admin/ingest/types';
+import type { TranscodeAction, TranscodeJob, TranscodeTask } from '@/admin/ingest/types';
 import { useI18n } from '@/i18n';
 import { colors, makeStyles } from '@/theme/tokens';
 
@@ -92,6 +92,7 @@ function JobCard({ job, busyAction, onAction }: { job: TranscodeJob; busyAction?
       {!!job.started_at && <Text style={adminStyles.muted}>{t('Started: {date}', { date: date(job.started_at) })}</Text>}
       {!!job.finished_at && <Text style={adminStyles.muted}>{t('Finished: {date}', { date: date(job.finished_at) })}</Text>}
     </View>
+    {!!job.tasks?.length && <TaskList tasks={job.tasks} />}
     <AdminButtons>
       {canStart(job.status) && <AdminButton compact variant="primary" icon="play" label={t('Start')} busy={busyAction === 'start'} disabled={busy} onPress={() => onAction('start')} />}
       <AdminButton compact icon="refresh" label={t('Restart')} busy={busyAction === 'restart'} disabled={busy} onPress={() => onAction('restart')} />
@@ -101,6 +102,40 @@ function JobCard({ job, busyAction, onAction }: { job: TranscodeJob; busyAction?
   </AdminCard>;
 }
 
+const TASK_STATUS_LABELS: Record<string, string> = { queued: 'Queued', running: 'Running', completed: 'Done', failed: 'Failed', skipped: 'Skipped', cancelled: 'Cancelled' };
+const FINISHED = ['completed', 'skipped', 'failed', 'cancelled'];
+
+function taskTone(status: string) {
+  if (status === 'running') return 'info' as const;
+  if (status === 'completed') return 'good' as const;
+  if (status === 'failed') return 'bad' as const;
+  return 'neutral' as const;
+}
+
+function TaskList({ tasks }: { tasks: TranscodeTask[] }) {
+  const styles = useStyles();
+  const { t } = useI18n();
+  const done = tasks.filter((task) => FINISHED.includes(task.status)).length;
+  return <View style={styles.tasks}>
+    <Text style={styles.tasksTitle}>{t('Tasks')} · {t('{done} of {total} done', { done, total: tasks.length })}</Text>
+    {tasks.map((task) => {
+      const progress = ['completed', 'skipped'].includes(task.status) ? 100 : safeProgress(task.progress);
+      const label = TASK_STATUS_LABELS[task.status];
+      const detail = task.status === 'running' ? `${task.worker_name || task.worker_id} · ${progress}%`
+        : task.status === 'queued' ? t('Waiting') : task.worker_name;
+      const attempt = task.attempts > 1 ? ` · ${t('attempt {count}', { count: task.attempts })}` : '';
+      return <View key={task.name} style={styles.task}>
+        <View style={adminStyles.inlineRow}>
+          <Text numberOfLines={1} style={[styles.taskName, styles.copy]}>{task.kind === 'prep' ? t('Audio, captions, thumbnail') : task.name}</Text>
+          <AdminBadge label={label ? t(label) : task.status} tone={taskTone(task.status)} />
+        </View>
+        <AdminProgress value={progress} label={`${detail || ''}${attempt}`} />
+        {!!task.error_message && task.status !== 'completed' && <Text numberOfLines={2} style={styles.error}>{task.error_message}</Text>}
+      </View>;
+    })}
+  </View>;
+}
+
 const useStyles = makeStyles(() => ({
   list: { marginTop: 14 },
   copy: { flex: 1, minWidth: 0 },
@@ -108,4 +143,8 @@ const useStyles = makeStyles(() => ({
   gap: { marginTop: 8 },
   meta: { marginTop: 8, gap: 2 },
   error: { color: colors.danger, fontSize: 12, lineHeight: 17, marginTop: 8 },
+  tasks: { marginTop: 10, gap: 8 },
+  tasksTitle: { color: colors.textDim, fontSize: 11, fontWeight: '700' },
+  task: { paddingVertical: 4 },
+  taskName: { color: colors.text, fontSize: 13, fontWeight: '800', fontFamily: 'monospace' },
 }));

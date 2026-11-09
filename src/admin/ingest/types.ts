@@ -79,6 +79,17 @@ export type TrackImportResult = { target_title?: string; video_id?: string };
 
 export type AudioJob = { job_id: string; status: 'queued' | 'processing' | 'completed' | 'failed' | string; error?: string; result?: TrackImportResult };
 
+export type TranscodeTask = {
+  name: string;
+  kind: 'prep' | 'sdr' | 'hdr' | string;
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'skipped' | 'cancelled' | string;
+  progress: number;
+  attempts: number;
+  worker_id: string;
+  worker_name: string;
+  error_message: string;
+};
+
 export type TranscodeJob = {
   video_id: string;
   title: string;
@@ -95,6 +106,9 @@ export type TranscodeJob = {
   updated_at: string;
   started_at?: string;
   finished_at?: string;
+  /** "split" for jobs encoded as distributed tasks, listed in tasks. */
+  mode?: string;
+  tasks?: TranscodeTask[];
 };
 
 export type TranscodeAction = 'start' | 'restart' | 'pause' | 'cancel';

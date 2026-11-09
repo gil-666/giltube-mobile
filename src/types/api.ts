@@ -34,7 +34,7 @@ export interface Video {
   progress?: number;
   width?: number;
   hidden?: boolean;
-  clip?: { id: string; original_video_id: string; start_seconds: number; end_seconds: number; clipped_by_username?: string; clipped_by_channel?: string };
+  clip?: { id: string; original_video_id: string; original_video_title?: string; start_seconds: number; end_seconds: number; clipped_by_username?: string; clipped_by_channel?: string };
 }
 
 export interface LiveStream {

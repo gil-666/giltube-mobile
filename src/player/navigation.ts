@@ -88,6 +88,8 @@ export interface OpenVideoOptions {
   commentID?: string;
   /** Open as part of this watch party. */
   partyID?: string;
+  /** Start here (seconds) instead of the saved position, without the intro. */
+  startAt?: number;
 }
 
 export function openVideo(video: Video | string, options: OpenVideoOptions = {}): void {
@@ -99,6 +101,7 @@ export function openVideo(video: Video | string, options: OpenVideoOptions = {})
   if (options.skipIntro) params.skipIntro = '1';
   if (options.commentID) params.comment = options.commentID;
   if (options.partyID) params.party = options.partyID;
+  if (options.startAt && options.startAt > 0) params.t = String(Math.floor(options.startAt));
   const href = { pathname: '/video/[id]' as const, params: params as { id: string } };
   if (topIsWatchScreen()) router.replace(href);
   else router.push(href);

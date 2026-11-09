@@ -3,7 +3,7 @@ import { useIsFocused } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
-import { opsAPI, type EnrollmentCode, type WorkerNode, type WorkerRelease } from '@/admin/ops/api';
+import { opsAPI, type EnrollmentCode, type WorkerLimits, type WorkerNode, type WorkerRelease } from '@/admin/ops/api';
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminLoading, AdminNotice, AdminProgress, AdminScreen, AdminSection, AdminToggle, adminStyles, alertError, confirmAction, formatBytes, useIsAdmin } from '@/admin/ui';
 import { mediaOrigin } from '@/config/environment';
 import { useI18n } from '@/i18n';
@@ -112,15 +112,52 @@ function WorkerCard({ worker, onChanged }: { worker: WorkerNode; onChanged: () =
       {!!worker.current_job && !worker.disabled && <Text style={adminStyles.muted}>{t('Roles can change once the current job finishes.')}</Text>}
     </> : <Fact label={t('Roles')} value={worker.roles.join(', ') || '—'} />}
 
+    {worker.roles.includes('transcode') && !worker.disabled && <EncodingSection worker={worker} busy={busy} onLimits={(limits) => action.mutate(() => opsAPI.setLimits(worker.id, limits))} />}
+
     {!worker.disabled && <AdminToggle label={t('Accept jobs')} help={worker.fallback_active ? t('No other worker is available, so this one keeps working as a fallback.') : t('Turn off to drain this worker without revoking it.')} value={!worker.scheduling_disabled} disabled={busy} onChange={toggleScheduling} />}
 
-    {!!worker.current_job && <AdminProgress value={worker.current_job.progress} label={`${worker.current_job.video_title || worker.current_job.video_id} · ${worker.current_job.progress}%`} />}
+    {!!worker.current_job && <AdminProgress value={worker.current_job.progress} label={`${worker.current_job.video_title || worker.current_job.video_id}${worker.current_job.task ? ` (${worker.current_job.task})` : ''} · ${worker.current_job.progress}%`} />}
 
     {worker.disabled && <AdminButtons>
       <AdminButton compact icon="refresh" label={t('Enable')} busy={busy} onPress={() => action.mutate(() => opsAPI.enableWorker(worker.id))} />
       <AdminButton compact variant="danger" icon="trash-outline" label={t('Delete')} disabled={busy} onPress={remove} />
     </AdminButtons>}
   </AdminCard>;
+}
+
+const SDR_LIMITS = [0, 2160, 1080, 720, 480];
+const HDR_LIMITS = [0, 2160, 1080, 720, -1];
+const heightLabel = (height: number) => height === 4320 ? '8K' : height === 2160 ? '4K' : `${height}p`;
+const rate = (value?: number) => value ? String(Math.round(value)) : '–';
+
+function EncodingSection({ worker, busy, onLimits }: { worker: WorkerNode; busy: boolean; onLimits: (limits: WorkerLimits) => void }) {
+  const styles = useStyles();
+  const { t } = useI18n();
+  const caps = worker.capabilities;
+  const limits: WorkerLimits = { sdr_max_height: worker.limits?.sdr_max_height ?? 0, hdr_max_height: worker.limits?.hdr_max_height ?? 0 };
+  const limitLabel = (height: number) => height === 0 ? t('No limit') : height < 0 ? t('No HDR') : heightLabel(height);
+  const software = [caps?.sdr_sw ? 'x264' : '', caps?.hdr_sw ? 'x265' : ''].filter(Boolean).join(', ');
+  return <View style={styles.encoding}>
+    <Text style={styles.factLabel}>{t('Encoding')}</Text>
+    {!caps?.version ? <Text style={adminStyles.muted}>{t('This worker has not reported its encoding capabilities yet (older version).')}</Text> : <>
+      <View style={styles.badges}>
+        {!!caps.sdr_hw_max_height && <AdminBadge label={t('SDR hardware up to {height}', { height: heightLabel(caps.sdr_hw_max_height) })} tone="info" />}
+        {!!caps.hdr_hw_max_height && <AdminBadge label={t('HDR hardware up to {height}', { height: heightLabel(caps.hdr_hw_max_height) })} tone="info" />}
+        <AdminBadge label={software ? t('Software: {encoders}', { encoders: software }) : t('No software encoders')} />
+        <AdminBadge label={`${t('{count} encode slots', { count: caps.slots || 1 })}${caps.prep_lane ? ` ${t('+ prep lane')}` : ''}`} />
+      </View>
+      <Text style={[adminStyles.muted, styles.spacedSmall]}>{t('SDR {hw} hw · {sw} sw MP/s', { hw: rate(caps.sdr_hw_mpps), sw: rate(caps.sdr_sw_mpps) })}</Text>
+      <Text style={adminStyles.muted}>{t('HDR {hw} hw · {sw} sw MP/s', { hw: rate(caps.hdr_hw_mpps), sw: rate(caps.hdr_sw_mpps) })}</Text>
+      <Text style={adminStyles.muted}>{t('4K decode {decode} · tonemap {tonemap} MP/s', { decode: rate(caps.decode_mpps), tonemap: rate(caps.tonemap_mpps) })}</Text>
+      <Text style={adminStyles.muted}>{caps.shared_storage ? t('Reads sources from shared storage') : t('Downloads at {rate}/s', { rate: caps.download_bps ? formatBytes(caps.download_bps) : t('not measured') })}</Text>
+    </>}
+    <Text style={[styles.factLabel, styles.spaced]}>{t('Limits')}</Text>
+    <Text style={adminStyles.muted}>{t('Cap the qualities this worker is given. Running tasks finish first.')}</Text>
+    {busy ? <AdminLoading /> : <>
+      <AdminChips label={t('SDR up to')} value={String(limits.sdr_max_height)} onChange={(value) => onLimits({ ...limits, sdr_max_height: Number(value) })} options={SDR_LIMITS.map((height) => ({ value: String(height), label: limitLabel(height) }))} />
+      <AdminChips label={t('HDR up to')} value={String(limits.hdr_max_height)} onChange={(value) => onLimits({ ...limits, hdr_max_height: Number(value) })} options={HDR_LIMITS.map((height) => ({ value: String(height), label: limitLabel(height) }))} />
+    </>}
+  </View>;
 }
 
 function Fact({ label, value }: { label: string; value: string }) {
@@ -207,6 +244,8 @@ const useStyles = makeStyles(() => ({
   command: { marginTop: 12, padding: 10, borderRadius: radii.md, backgroundColor: colors.black },
   commandText: { color: '#6ee7b7', fontSize: 11, lineHeight: 17, fontFamily: 'monospace', marginTop: 4 },
   spaced: { marginTop: 12 },
+  spacedSmall: { marginTop: 6 },
+  encoding: { marginTop: 10, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   release: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   releaseTitle: { color: colors.text, fontSize: 14, fontWeight: '800' },
   step: { flexDirection: 'row', gap: 10, paddingVertical: 4 },

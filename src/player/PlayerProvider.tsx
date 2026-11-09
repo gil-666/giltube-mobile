@@ -40,9 +40,24 @@ async function resolvePlaybackSource(masterURI: string, hdrEnabled: boolean): Pr
   return { uri: hdrEnabled ? probe.url : masterURI, hdrURI: probe.url, hdr: { available: true, playing: hdrEnabled } };
 }
 
+/** The part of the source a clip plays (seconds into the original video). */
+export interface ClipRange { start: number; end: number }
+
+// A clip is its own video that streams the original's HLS ladder, so the
+// player has to keep playback inside its range. Downloads are already cut by
+// the server, so a local file plays as is.
+function clipRangeOf(video: Video, sourceURI: string): ClipRange | null {
+  const start = Number(video.clip?.start_seconds);
+  const end = Number(video.clip?.end_seconds);
+  if (sourceURI.startsWith('file:') || !Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+  return { start: Math.max(0, start), end };
+}
+
 interface PlayerContextValue {
   player: ReturnType<typeof useVideoPlayer>;
   video: Video | null;
+  // Set while a streamed clip plays: times and seeks stay inside it.
+  clipRange: ClipRange | null;
   liveStream: LiveStream | null;
   mode: PlayerMode;
   quality: string;
@@ -66,6 +81,9 @@ interface PlayerContextValue {
   minimize: () => void;
   expand: () => void;
   dismiss: () => void;
+  // Picks up a clip range the first video object lacked (e.g. opened from a
+  // feed card before the full video loaded).
+  syncClip: (video: Video) => void;
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -107,6 +125,12 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
   const operationRef = useRef(0);
   const replaceQueueRef = useRef<Promise<void>>(Promise.resolve());
   const videoRef = useRef<Video | null>(null);
+  const [clipRange, setClipRangeState] = useState<ClipRange | null>(null);
+  const clipRangeRef = useRef<ClipRange | null>(null);
+  const setClipRange = useCallback((range: ClipRange | null) => {
+    clipRangeRef.current = range;
+    setClipRangeState(range);
+  }, []);
   const modeRef = useRef<PlayerMode>('hidden');
   const watchPartyRef = useRef<WatchPartySnapshot | null>(null);
   const pathnameRef = useRef(pathname);
@@ -209,6 +233,7 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     setIsLoading(true);
     setLiveStream(null);
     setVideo(nextVideo);
+    setClipRange(clipRangeOf(nextVideo, masterURI));
     setMode(nextMode);
     player.muted = false;
     player.showNowPlayingNotification = true;
@@ -242,10 +267,11 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
       throw error;
     }
     if (operation !== operationRef.current) { player.pause(); return; }
+    if (clipRangeRef.current) player.currentTime = clipRangeRef.current.start;
     setIsLoading(false);
     const shouldPlay = typeof autoplay === 'function' ? autoplay() : autoplay;
     if (shouldPlay) player.play(); else player.pause();
-  }, [applyHDR, getDownload, player, replacePlayerSource]);
+  }, [applyHDR, getDownload, player, replacePlayerSource, setClipRange]);
 
   const play = useCallback(async (nextVideo: Video, sourceUri?: string, options?: { shouldAutoplay?: () => boolean }) => {
     if (watchPartyRef.current) throw new Error('Leave your active watch party before playing another video.');
@@ -269,6 +295,7 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     setQuality('Auto');
     setIsLoading(true);
     setVideo(null);
+    setClipRange(null);
     setLiveStream(stream);
     setMode('expanded');
     player.muted = false;
@@ -302,7 +329,7 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
 	if (operation !== operationRef.current) return;
 	setLiveQualityOptions(options);
 	scheduleLiveQualityLock(operation, stream, options);
-  }, [applyHDR, player, replacePlayerSource, scheduleLiveQualityLock]);
+  }, [applyHDR, player, replacePlayerSource, scheduleLiveQualityLock, setClipRange]);
 
   const switchQuality = useCallback(async (sourceUri: string | null, label: string) => {
 	if (liveStream) {
@@ -399,6 +426,29 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     return () => subscription.remove();
   }, [player, swapHDRSource]);
 
+  // Keeps a clip inside its range, like the website: seeking before it jumps to
+  // its start, and reaching its end pauses back at the start.
+  useEffect(() => {
+    const subscription = player.addListener('timeUpdate', ({ currentTime }) => {
+      const range = clipRangeRef.current;
+      if (!range || watchPartyRef.current) return;
+      if (currentTime < range.start - 0.35) player.currentTime = range.start;
+      else if (currentTime >= range.end) {
+        player.pause();
+        player.currentTime = range.start;
+      }
+    });
+    return () => subscription.remove();
+  }, [player]);
+
+  const syncClip = useCallback((next: Video) => {
+    if (videoRef.current?.id !== next.id || clipRangeRef.current) return;
+    const range = clipRangeOf(next, sourceRef.current);
+    if (!range) return;
+    setClipRange(range);
+    if (player.currentTime < range.start - 0.35 || player.currentTime >= range.end) player.currentTime = range.start;
+  }, [player, setClipRange]);
+
   const minimize = useCallback(() => setMode((current) => current === 'hidden' ? current : 'minimized'), []);
   const expand = useCallback(() => setMode((current) => current === 'hidden' ? current : 'expanded'), []);
   const dismiss = useCallback(() => {
@@ -412,6 +462,7 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     player.staysActiveInBackground = false;
     player.showNowPlayingNotification = false;
     setVideo(null);
+    setClipRange(null);
     setLiveStream(null);
     setMode('hidden');
     setQuality('Auto');
@@ -428,7 +479,7 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     applyingRemoteRef.current = false;
     void replacePlayerSource(null).catch(() => undefined);
     releaseMediaFocus('video');
-  }, [applyHDR, player, replacePlayerSource]);
+  }, [applyHDR, player, replacePlayerSource, setClipRange]);
 
   // Only one thing plays at a time: GilTube Music starting stops the video.
   useEffect(() => onMediaFocusChange((owner) => {
@@ -666,8 +717,8 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
   }, [mode, player]);
 
   const value = useMemo(
-    () => ({ player, video, liveStream, mode, quality, liveQualityOptions, isLoading, playbackMasterURL, hdr, setHDREnabled, watchParty, watchPartyEvent, play, playLive, switchQuality, joinWatchParty, refreshWatchParty, sendWatchPartyPlayback, leaveWatchParty, minimize, expand, dismiss }),
-    [player, video, liveStream, mode, quality, liveQualityOptions, isLoading, playbackMasterURL, hdr, setHDREnabled, watchParty, watchPartyEvent, play, playLive, switchQuality, joinWatchParty, refreshWatchParty, sendWatchPartyPlayback, leaveWatchParty, minimize, expand, dismiss],
+    () => ({ player, video, clipRange, liveStream, mode, quality, liveQualityOptions, isLoading, playbackMasterURL, hdr, setHDREnabled, watchParty, watchPartyEvent, play, playLive, switchQuality, joinWatchParty, refreshWatchParty, sendWatchPartyPlayback, leaveWatchParty, minimize, expand, dismiss, syncClip }),
+    [player, video, clipRange, liveStream, mode, quality, liveQualityOptions, isLoading, playbackMasterURL, hdr, setHDREnabled, watchParty, watchPartyEvent, play, playLive, switchQuality, joinWatchParty, refreshWatchParty, sendWatchPartyPlayback, leaveWatchParty, minimize, expand, dismiss, syncClip],
   );
 
   return (

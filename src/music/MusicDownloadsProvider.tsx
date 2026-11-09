@@ -2,6 +2,8 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '@/auth/AuthProvider';
+import { downloadNotifications, ensureNotificationPermission, progressText, progressThrottle } from '@/downloads/notifications';
+import { useI18n } from '@/i18n';
 import { fileQualityFor, musicSource, normalizeMusicQuality, type MusicFileQuality } from '@/music/quality';
 import type { MusicTrack } from '@/types/api';
 
@@ -27,6 +29,8 @@ export interface MusicDownloadsContextValue {
 const MusicDownloadsContext = createContext<MusicDownloadsContextValue | null>(null);
 const musicDirectory = new Directory(Paths.document, 'giltube-music');
 const metadataFile = new File(Paths.document, 'giltube-music.json');
+const MUSIC_NOTIFICATION = 'music-downloads';
+const MUSIC_LINK = 'giltube://music/downloads';
 
 function ensureStorage() {
   musicDirectory.create({ intermediates: true, idempotent: true });
@@ -69,6 +73,11 @@ export function MusicDownloadsProvider({ children }: React.PropsWithChildren) {
   const activeRef = useRef<{ track: MusicTrack; abort: AbortController } | null>(null);
   const pumpRef = useRef<Promise<void> | null>(null);
   const musicQualityRef = useRef<unknown>(account?.music_quality);
+  // One notification for the whole run of queued tracks.
+  const batchRef = useRef({ total: 0, done: 0, failed: 0 });
+  const { t } = useI18n();
+  const tRef = useRef(t);
+  useEffect(() => { tRef.current = t; }, [t]);
 
   useEffect(() => { musicQualityRef.current = account?.music_quality; }, [account?.music_quality]);
 
@@ -117,6 +126,10 @@ export function MusicDownloadsProvider({ children }: React.PropsWithChildren) {
     activeRef.current = { track, abort };
     updateActivity(track.id, { status: 'downloading', progress: 0 });
     let lastProgress = 0;
+    const batch = batchRef.current;
+    const title = `${tRef.current('Downloading music')} (${Math.min(batch.total, batch.done + batch.failed + 1)}/${batch.total})`;
+    const shouldNotify = progressThrottle();
+    downloadNotifications.progress(MUSIC_NOTIFICATION, title, track.title, null, MUSIC_LINK);
     try {
       const task = File.createDownloadTask(source.url, destination, {
         sessionType: 'background',
@@ -124,6 +137,9 @@ export function MusicDownloadsProvider({ children }: React.PropsWithChildren) {
         onProgress: ({ bytesWritten, totalBytes }) => {
           if (abort.signal.aborted) return;
           const progress = totalBytes > 0 ? Math.min(1, bytesWritten / totalBytes) : 0;
+          if (shouldNotify(Math.floor(progress * 100))) {
+            downloadNotifications.progress(MUSIC_NOTIFICATION, title, `${track.title} · ${progressText(bytesWritten, totalBytes)}`, totalBytes > 0 ? progress * 100 : null, MUSIC_LINK);
+          }
           if (progress - lastProgress < 0.01 && progress < 1) return;
           lastProgress = progress;
           updateActivity(track.id, { status: 'downloading', progress });
@@ -158,10 +174,23 @@ export function MusicDownloadsProvider({ children }: React.PropsWithChildren) {
       for (let track = queueRef.current.shift(); track; track = queueRef.current.shift()) {
         try {
           await downloadOne(track);
+          if (downloadsRef.current.some((entry) => entry.track.id === track!.id)) batchRef.current.done += 1;
         } catch {
+          batchRef.current.failed += 1;
           updateActivity(track.id, { status: 'failed', progress: 0 });
         }
       }
+      const { done, failed } = batchRef.current;
+      batchRef.current = { total: 0, done: 0, failed: 0 };
+      const tr = tRef.current;
+      if (done + failed === 0) downloadNotifications.cancel(MUSIC_NOTIFICATION);
+      else downloadNotifications.finish(
+        MUSIC_NOTIFICATION,
+        tr(failed ? 'Music downloads finished with errors' : 'Music downloaded'),
+        failed ? `${done} ${tr('downloaded')} · ${failed} ${tr('failed')}` : `${done} ${tr(done === 1 ? 'track' : 'tracks')} ${tr('ready offline')}`,
+        failed > 0,
+        MUSIC_LINK,
+      );
     };
     const task = run().finally(() => { pumpRef.current = null; });
     pumpRef.current = task;
@@ -179,6 +208,9 @@ export function MusicDownloadsProvider({ children }: React.PropsWithChildren) {
       added.push(track);
     }
     if (added.length === 0) return;
+    if (!pumpRef.current) batchRef.current = { total: 0, done: 0, failed: 0 };
+    batchRef.current.total += added.length;
+    await ensureNotificationPermission();
     queueRef.current.push(...added);
     setActivity((current) => {
       const next = { ...current };

@@ -2,8 +2,11 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { giltubeAPI } from '@/api/giltube';
+import { useI18n } from '@/i18n';
 import type { Video } from '@/types/api';
 import { resolveMediaURL } from '@/utils/media';
+
+import { downloadNotifications, ensureNotificationPermission, formatMB, progressText, progressThrottle } from './notifications';
 
 export interface OfflineDownload {
   video: Video;
@@ -62,6 +65,9 @@ export function DownloadProvider({ children }: React.PropsWithChildren) {
   const [activity, setActivity] = useState<Record<string, DownloadActivity>>({});
   const activeIDs = useRef(new Set<string>());
   const downloadsRef = useRef<OfflineDownload[]>([]);
+  const { t } = useI18n();
+  const tRef = useRef(t);
+  useEffect(() => { tRef.current = t; }, [t]);
 
   useEffect(() => {
     ensureStorage();
@@ -93,6 +99,11 @@ export function DownloadProvider({ children }: React.PropsWithChildren) {
     if (activeIDs.current.has(video.id) || downloadsRef.current.some((entry) => entry.video.id === video.id)) return;
     activeIDs.current.add(video.id);
     updateActivity(video.id, { status: 'preparing', progress: 0, message: 'Preparing offline video…', bytesWritten: 0, totalBytes: 0, quality: requestedQuality });
+    // The notification follows the download and, when done, opens the video (offline).
+    const key = `video:${video.id}`;
+    const tr = tRef.current;
+    await ensureNotificationPermission();
+    downloadNotifications.progress(key, video.title, tr('Preparing offline video…'), null, 'giltube://library');
 
     try {
       let preparation = await giltubeAPI.prepareDownload(video.id, requestedQuality);
@@ -109,10 +120,15 @@ export function DownloadProvider({ children }: React.PropsWithChildren) {
       if (destination.exists) destination.delete();
       updateActivity(video.id, { status: 'downloading', progress: 0, message: 'Downloading…', bytesWritten: 0, totalBytes: 0, quality: preparation.selected_quality });
 
+      const shouldNotify = progressThrottle();
+      downloadNotifications.progress(key, video.title, tr('Downloading…'), null, 'giltube://library');
       const task = File.createDownloadTask(resolveMediaURL(preparation.file_url), destination, {
         sessionType: 'background',
         onProgress: ({ bytesWritten, totalBytes }) => {
           const progress = totalBytes > 0 ? Math.min(1, bytesWritten / totalBytes) : 0;
+          if (shouldNotify(Math.floor(progress * 100))) {
+            downloadNotifications.progress(key, video.title, progressText(bytesWritten, totalBytes), totalBytes > 0 ? progress * 100 : null, 'giltube://library');
+          }
           updateActivity(video.id, {
             status: 'downloading',
             progress,
@@ -138,7 +154,9 @@ export function DownloadProvider({ children }: React.PropsWithChildren) {
       saveMetadata(next);
       setDownloads(next);
       updateActivity(video.id);
+      downloadNotifications.finish(key, tr('Download complete'), `${video.title} · ${formatMB(file.size)} · ${preparation.selected_quality}`, false, `giltube://video/${video.id}`);
     } catch (error) {
+      downloadNotifications.finish(key, tr('Download failed'), video.title, true, 'giltube://library');
       updateActivity(video.id, {
         status: 'failed',
         progress: 0,

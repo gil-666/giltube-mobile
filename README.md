@@ -2,7 +2,7 @@
 
 Native iOS and Android client for GilTube, built with React Native and Expo (SDK 57, React Native 0.86, New Architecture, Expo Router with typed routes, React Compiler).
 
-Current version: `0.9.35` (Android `versionCode` 49) in `package.json`, `app.json` and `android/app/build.gradle`.
+Current version: `0.9.38` (Android `versionCode` 52) in `package.json`, `app.json` and `android/app/build.gradle`.
 
 ## Features
 
@@ -123,7 +123,7 @@ src/
   admin/             admin screens' API and components (in progress)
 modules/giltube-hdr/ local Expo module for HDR capability detection
 patches/             patch-package patches applied on install
-play-store/          Play Store listing text and asset generator
+play-store/          Play Store listing text, asset generator, publish script, release notes
 ```
 
 ## Native modules
@@ -141,6 +141,14 @@ play-store/          Play Store listing text and asset generator
 
 ```bash
 java play-store/GenerateStoreAssets.java .
+```
+
+`play-store/publish.py` uploads a release bundle through the Google Play Developer API using the `google-play-publisher` service account (key file from `$GILTUBE_PLAY_KEY`, never committed; needs Python `cryptography`). Release notes live in `play-store/release-notes/<version>.json`. Closed testing is the `alpha` track:
+
+```bash
+python3 play-store/publish.py tracks
+python3 play-store/publish.py release --aab dist/play-store-0.9.38/GilTube-0.9.38-play-store.aab \
+    --version-code 52 --name "0.9.38 (52)" --notes play-store/release-notes/0.9.38.json internal alpha
 ```
 
 ## Related backend work

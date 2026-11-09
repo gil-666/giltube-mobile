@@ -8,12 +8,21 @@ import { environment } from '@/config/environment';
 // Types and calls for the Workers, YouTube mirror, Featured and Playback intro
 // admin screens. Shapes mirror the Go handlers in internal/api.
 
-export type WorkerJob = { video_id: string; video_title: string; progress: number; started_at: string };
+export type WorkerJob = { video_id: string; video_title: string; progress: number; started_at: string; task?: string };
+/** What a worker reported it can encode, and how fast (megapixels per second per slot). */
+export type WorkerCapabilities = {
+  version?: number; sdr_hw_max_height?: number; hdr_hw_max_height?: number; sdr_sw?: boolean; hdr_sw?: boolean; slots?: number;
+  sdr_hw_mpps?: number; sdr_sw_mpps?: number; hdr_hw_mpps?: number; hdr_sw_mpps?: number; decode_mpps?: number; tonemap_mpps?: number;
+  download_bps?: number; shared_storage?: boolean; prep_lane?: boolean;
+};
+/** Administrator caps: 0 = no limit, -1 (HDR only) = never. */
+export type WorkerLimits = { sdr_max_height: number; hdr_max_height: number };
 export type WorkerNode = {
   id: string; name: string; platform: string; arch: string; encoder: string; encoder_kind: string; is_gpu: boolean;
   roles: string[]; roles_locked: boolean; version: string; status: 'online' | 'offline' | 'revoked'; managed: boolean;
   disabled: boolean; scheduling_disabled: boolean; effective_enabled: boolean; fallback_active: boolean; is_primary: boolean;
   last_ip: string; started_at: string; last_seen: string; current_job?: WorkerJob;
+  capabilities?: WorkerCapabilities; limits?: WorkerLimits;
 };
 export type WorkerRelease = { filename: string; version: string; os: 'linux' | 'windows' | 'darwin'; arch: 'amd64' | 'arm64'; size: number; sha256: string; download_url: string };
 export type EnrollmentCode = { code: string; expires_at: string };
@@ -54,6 +63,7 @@ export const opsAPI = {
   setScheduling: (workerID: string, enabled: boolean) => adminJSON('POST', `/workers/${id(workerID)}/scheduling`, { enabled }),
   setRoles: (workerID: string, roles: string[]) => adminJSON('PUT', `/workers/${id(workerID)}/roles`, { roles }),
   deleteWorker: (workerID: string) => adminJSON('DELETE', `/workers/${id(workerID)}`),
+  setLimits: (workerID: string, limits: WorkerLimits) => adminJSON('PUT', `/workers/${id(workerID)}/limits`, limits),
 
   channels: async () => (await adminRequest<AdminChannel[] | null>('/channels')) ?? [],
   mirrorChannels: async () => (await adminRequest<{ mappings?: MirrorChannel[] }>('/youtube-mirrors/channels'))?.mappings ?? [],
