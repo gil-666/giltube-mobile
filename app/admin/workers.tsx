@@ -152,7 +152,7 @@ function EncodingSection({ worker, busy, onLimits }: { worker: WorkerNode; busy:
       <Text style={adminStyles.muted}>{caps.shared_storage ? t('Reads sources from shared storage') : t('Downloads at {rate}/s', { rate: caps.download_bps ? formatBytes(caps.download_bps) : t('not measured') })}</Text>
     </>}
     <Text style={[styles.factLabel, styles.spaced]}>{t('Limits')}</Text>
-    <Text style={adminStyles.muted}>{t('Cap the qualities this worker is given. Running tasks finish first.')}</Text>
+    <Text style={adminStyles.muted}>{t('Cap the qualities this worker is given. Running tasks above the new limits go back to the queue.')}</Text>
     {busy ? <AdminLoading /> : <>
       <AdminChips label={t('SDR up to')} value={String(limits.sdr_max_height)} onChange={(value) => onLimits({ ...limits, sdr_max_height: Number(value) })} options={SDR_LIMITS.map((height) => ({ value: String(height), label: limitLabel(height) }))} />
       <AdminChips label={t('HDR up to')} value={String(limits.hdr_max_height)} onChange={(value) => onLimits({ ...limits, hdr_max_height: Number(value) })} options={HDR_LIMITS.map((height) => ({ value: String(height), label: limitLabel(height) }))} />

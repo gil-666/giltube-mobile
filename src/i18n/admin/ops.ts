@@ -59,7 +59,7 @@ const strings: Record<string, string> = {
   'Downloads at {rate}/s': 'Descarga a {rate}/s',
   'not measured': 'sin medir',
   'Limits': 'Límites',
-  'Cap the qualities this worker is given. Running tasks finish first.': 'Limita las calidades que recibe este worker. Las tareas en curso terminan primero.',
+  'Cap the qualities this worker is given. Running tasks above the new limits go back to the queue.': 'Limita las calidades que recibe este worker. Las tareas en curso que superen los nuevos límites vuelven a la cola.',
   'SDR up to': 'SDR hasta',
   'HDR up to': 'HDR hasta',
   'No limit': 'Sin límite',
