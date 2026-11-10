@@ -267,6 +267,7 @@ export const esMX: Record<string, string> = {
   "Playback quality": "Calidad de reproducción",
   "HDR (high dynamic range)": "HDR (alto rango dinámico)",
   "5.1 surround sound": "Sonido envolvente 5.1",
+  "Dolby Atmos": "Dolby Atmos",
   "HDR: On": "HDR: activado",
   "HDR: Off": "HDR: desactivado",
   "High dynamic range on this screen": "Alto rango dinámico en esta pantalla",

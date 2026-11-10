@@ -19,9 +19,9 @@ import { enforceSingleWatchScreen, isWatchPath, openLive, openVideo, setPlayerNa
 import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import type { LiveStream, Video, WatchPartyEvent, WatchPartySnapshot } from '@/types/api';
 import { useAppSettings } from '@/settings/AppSettingsProvider';
-import { isLocalHLSManifest, loadHLSQualities, pinnedQualityManifest, probeHDRMaster, type QualityOption } from '@/utils/hls';
+import { isAtmosMasterURL, isLocalHLSManifest, loadHLSQualities, pinnedQualityManifest, preferAtmosMaster, probeHDRMaster, withoutAtmosMaster, type QualityOption } from '@/utils/hls';
 import { resolveMediaURL } from '@/utils/media';
-import { canPlayHDR, deviceSupportsHDR } from '../../modules/giltube-hdr';
+import { canPlayHDR, deviceSupportsAtmos, deviceSupportsHDR } from '../../modules/giltube-hdr';
 import { subscribeToWatchParty } from '@/watch-parties/events';
 
 type PlayerMode = 'hidden' | 'expanded' | 'minimized';
@@ -31,13 +31,19 @@ type PlayerMode = 'hidden' | 'expanded' | 'minimized';
 export interface HDRState { available: boolean; playing: boolean }
 const noHDR: HDRState = { available: false, playing: false };
 
-// Picks master.m3u8 or its HDR sibling. Only HDR-capable devices probe, so
-// everyone else starts playback without the extra request.
-async function resolvePlaybackSource(masterURI: string, hdrEnabled: boolean): Promise<{ uri: string; hdrURI: string; hdr: HDRState }> {
-  if (masterURI.startsWith('file:') || !deviceSupportsHDR()) return { uri: masterURI, hdrURI: '', hdr: noHDR };
-  const probe = await probeHDRMaster(masterURI);
-  if (!probe || !canPlayHDR(probe.videoRange)) return { uri: masterURI, hdrURI: '', hdr: noHDR };
-  return { uri: hdrEnabled ? probe.url : masterURI, hdrURI: probe.url, hdr: { available: true, playing: hdrEnabled } };
+// Picks master.m3u8 or its HDR sibling, and on Atmos-capable devices the
+// Atmos version of either. Only capable devices probe, so everyone else
+// starts playback without the extra requests.
+async function resolvePlaybackSource(masterURI: string, hdrEnabled: boolean): Promise<{ uri: string; sdrURI: string; hdrURI: string; hdr: HDRState }> {
+  if (masterURI.startsWith('file:')) return { uri: masterURI, sdrURI: masterURI, hdrURI: '', hdr: noHDR };
+  const atmos = deviceSupportsAtmos();
+  const [sdrURI, probe] = await Promise.all([
+    atmos ? preferAtmosMaster(masterURI) : masterURI,
+    deviceSupportsHDR() ? probeHDRMaster(masterURI) : null,
+  ]);
+  if (!probe || !canPlayHDR(probe.videoRange)) return { uri: sdrURI, sdrURI, hdrURI: '', hdr: noHDR };
+  const hdrURI = atmos ? await preferAtmosMaster(probe.url) : probe.url;
+  return { uri: hdrEnabled ? hdrURI : sdrURI, sdrURI, hdrURI, hdr: { available: true, playing: hdrEnabled } };
 }
 
 /** The part of the source a clip plays (seconds into the original video). */
@@ -249,6 +255,7 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     if (operation !== operationRef.current) return;
     const uri = resolved.uri;
     sourceRef.current = uri;
+    sdrMasterRef.current = resolved.sdrURI;
     hdrMasterRef.current = resolved.hdrURI;
     applyHDR(resolved.hdr);
     setPlaybackMasterURL(uri);
@@ -415,11 +422,18 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     await swapHDRSource(enabled);
   }, [swapHDRSource, updateSettings]);
 
-  // A decoder that rejects the HEVC HDR ladder must not strand playback:
-  // drop back to SDR at the same position.
+  // A decoder that rejects the Atmos audio or the HEVC HDR ladder must not
+  // strand playback: drop back to AAC first, then to SDR, at the same position.
   useEffect(() => {
     const subscription = player.addListener('statusChange', ({ status }) => {
-      if (status !== 'error' || !hdrRef.current.playing) return;
+      if (status !== 'error') return;
+      if (isAtmosMasterURL(sourceRef.current)) {
+        sdrMasterRef.current = withoutAtmosMaster(sdrMasterRef.current);
+        if (hdrMasterRef.current) hdrMasterRef.current = withoutAtmosMaster(hdrMasterRef.current);
+        void swapHDRSource(hdrRef.current.playing).catch(() => undefined);
+        return;
+      }
+      if (!hdrRef.current.playing) return;
       hdrMasterRef.current = '';
       void swapHDRSource(false).catch(() => undefined);
     });

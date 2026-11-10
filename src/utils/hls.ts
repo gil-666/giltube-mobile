@@ -42,6 +42,40 @@ export async function probeHDRMaster(masterURL: string): Promise<{ url: string; 
   }
 }
 
+// Titles with a Dolby Atmos source track publish master-atmos.m3u8 and
+// master-hdr-atmos.m3u8: the same masters plus E-AC-3 JOC renditions (see the
+// backend's internal/atmos). Only Atmos-capable devices load them.
+const atmosMasterPattern = /\/(master(?:-hdr)?)\.m3u8$/i;
+const atmosSiblingPattern = /\/(master(?:-hdr)?)-atmos\.m3u8$/i;
+
+export function isAtmosMasterURL(url: string): boolean {
+  return atmosSiblingPattern.test(url.split('?')[0] || '');
+}
+
+export function withoutAtmosMaster(url: string): string {
+  const [path = '', query] = url.split('?');
+  return path.replace(atmosSiblingPattern, '/$1.m3u8') + (query ? `?${query}` : '');
+}
+
+// Returns the Atmos sibling of a master when the title has one, else the
+// master itself.
+export async function preferAtmosMaster(masterURL: string): Promise<string> {
+  const [path = '', query] = masterURL.split('?');
+  if (!atmosMasterPattern.test(path)) return masterURL;
+  const url = path.replace(atmosMasterPattern, '/$1-atmos.m3u8') + (query ? `?${query}` : '');
+  try {
+    const response = await fetch(url, { cache: 'no-store' });
+    if (response.ok && (await response.text()).includes('/JOC"')) return url;
+  } catch {
+    // No Atmos master: keep the AAC one.
+  }
+  return masterURL;
+}
+
+export function isAtmosAudioTrack(track?: { name?: string; label?: string } | null): boolean {
+  return /\batmos\b/i.test(`${track?.name || ''} ${track?.label || ''}`);
+}
+
 function absoluteURIAttribute(line: string, baseURL: string): string {
   return line.replace(/URI="([^"]*)"/, (_, uri: string) => `URI="${new URL(uri, baseURL).toString()}"`);
 }

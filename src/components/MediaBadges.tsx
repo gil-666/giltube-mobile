@@ -1,18 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 
+import { DolbyAtmosBadge } from '@/components/DolbyAtmosBadge';
 import { useI18n } from '@/i18n';
 import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import type { ContentRating, MediaCapabilities } from '@/types/api';
 import { contentDescriptorText } from '@/utils/contentRating';
 
-// 18+, rating, quality, HDR and 5.1 surround chips for movie and series
+// 18+, rating, quality, HDR, 5.1 surround and Dolby Atmos chips for movie and series
 // detail screens. Each chip only appears when the content actually has it.
 export function MediaBadges({ capabilities, rating, explicit }: { capabilities?: MediaCapabilities; rating?: ContentRating; explicit?: boolean }) {
   const styles = useStyles();
   const { t } = useI18n();
   const hasRating = !!rating?.rating;
-  if (!explicit && !hasRating && (!capabilities || (!capabilities.max_quality && !capabilities.hdr && !capabilities.surround))) return null;
+  if (!explicit && !hasRating && (!capabilities || (!capabilities.max_quality && !capabilities.hdr && !capabilities.surround && !capabilities.atmos))) return null;
   const descriptors = hasRating ? contentDescriptorText(rating, t) : '';
   return <View style={styles.row}>
     {!!explicit && <View accessibilityLabel={t('18+ explicit')} style={[styles.chip, styles.explicit]}><Text style={[styles.chipText, styles.explicitText]}>18+</Text></View>}
@@ -20,6 +21,7 @@ export function MediaBadges({ capabilities, rating, explicit }: { capabilities?:
     {!!capabilities?.max_quality && <View style={styles.quality}><Ionicons name="sparkles-outline" color={colors.accentBright} size={16} /><Text style={styles.qualityText}>{t('Up to')} {capabilities!.max_quality}</Text></View>}
     {!!capabilities?.hdr && <View accessibilityLabel={t('HDR (high dynamic range)')} style={[styles.chip, styles.hdr]}><Text style={[styles.chipText, styles.hdrText]}>HDR</Text></View>}
     {!!capabilities?.surround && <View accessibilityLabel={t('5.1 surround sound')} style={[styles.chip, styles.surround]}><Ionicons name="volume-high-outline" color="#ddd6fe" size={14} /><Text style={[styles.chipText, styles.surroundText]}>5.1</Text></View>}
+    {!!capabilities?.atmos && <DolbyAtmosBadge size="chip" />}
     {!!descriptors && <Text style={styles.descriptors}>{descriptors}</Text>}
   </View>;
 }

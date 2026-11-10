@@ -331,6 +331,7 @@ export interface MediaCapabilities {
   caption_languages?: string[];
   hdr?: boolean;
   surround?: boolean;
+  atmos?: boolean;
 }
 
 // US rating from TMDB (or set by an admin) plus content descriptor keys:

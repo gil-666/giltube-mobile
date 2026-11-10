@@ -19,6 +19,7 @@ import { musicAPI } from '@/api/music';
 import { useAuth } from '@/auth/AuthProvider';
 import { useActiveChannel } from '@/channels/ChannelProvider';
 import { ContentRatingCard, type ContentWarningKind } from '@/components/ContentRatingCard';
+import { DolbyAtmosBadge } from '@/components/DolbyAtmosBadge';
 import { GiphyPicker } from '@/components/GiphyPicker';
 import { PressableScale } from '@/components/PressableScale';
 import { SectionRail } from '@/components/SectionRail';
@@ -34,7 +35,7 @@ import { PlaylistCreator } from '@/playlists/PlaylistCreator';
 import { useAppSettings } from '@/settings/AppSettingsProvider';
 import { colors, makeStyles, motion, radii, withAlpha } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
-import { loadHLSQualities } from '@/utils/hls';
+import { isAtmosAudioTrack, loadHLSQualities } from '@/utils/hls';
 import { isResumable } from '@/utils/watchProgress';
 import type { Comment, MusicTrack } from '@/types/api';
 import { WatchPartyChat, WatchPartyPanel } from '@/watch-parties/WatchPartyPanel';
@@ -54,6 +55,7 @@ export default function VideoScreen() {
   const videoViewRef = useRef<VideoView>(null); const contentScrollRef = useRef<ScrollView>(null); const resumedVideoRef = useRef(''); const preferencesVideoRef = useRef(''); const focusedScrollRef = useRef(''); const window = useWindowDimensions(); const chromeOpacity = useSharedValue(1);
   const timeUpdate = useEvent(player, 'timeUpdate', { currentTime: player.currentTime, bufferedPosition: 0, currentLiveTimestamp: null, currentOffsetFromLive: null });
   const statusChange = useEvent(player, 'statusChange', { status: player.status });
+  const audioTrackChange = useEvent(player, 'audioTrackChange', { audioTrack: player.audioTrack, previousAudioTrack: null });
   const playingChange = useEvent(player, 'playingChange', { isPlaying: player.playing });
   const currentTime = timeUpdate?.currentTime ?? player.currentTime;
   const translateY = useSharedValue(0);
@@ -82,6 +84,8 @@ export default function VideoScreen() {
   const playbackQualityURL = activeVideo?.id === id && playbackMasterURL && !playbackMasterURL.startsWith('file:') ? playbackMasterURL : masterURL;
   const playbackQualities = useQuery({ queryKey: ['hls-qualities', playbackQualityURL], queryFn: () => loadHLSQualities(playbackQualityURL), enabled: !!playbackQualityURL && !playbackQualityURL.startsWith('file:') });
   const isPlayingHDR = activeVideo?.id === id && hdr.playing;
+  // Atmos tracks only exist in the Atmos masters, which only capable devices load.
+  const isPlayingAtmos = activeVideo?.id === id && isAtmosAudioTrack(audioTrackChange?.audioTrack ?? player.audioTrack);
   const saved = id ? getDownload(id) : undefined; const downloadActivity = id ? activity[id] : undefined;
   // Focus, not just the pathname: a screen pushed on top (channel, music, ...)
   // leaves this one in the stack, and only a focused watch screen shows the player.
@@ -269,7 +273,9 @@ export default function VideoScreen() {
     const normalize = (value?: string) => (value || '').trim().toLowerCase().replaceAll('_', '-');
     const matches = (candidate?: string, preferred?: string) => { const a = normalize(candidate); const b = normalize(preferred); return !!a && !!b && (a === b || a.split('-')[0] === b.split('-')[0]); };
     if (account?.audio_language) {
-      const track = player.availableAudioTracks.find((item) => matches(item.language, account.audio_language));
+      // Prefer the Dolby Atmos version of the language when there is one.
+      const candidates = player.availableAudioTracks.filter((item) => matches(item.language, account.audio_language));
+      const track = candidates.find(isAtmosAudioTrack) || candidates[0];
       if (track) player.audioTrack = track;
     }
     if (account?.caption_language) {
@@ -396,7 +402,7 @@ export default function VideoScreen() {
       {!!seekFeedback && <View pointerEvents="none" style={[styles.seekFeedback, seekFeedback.direction < 0 ? styles.seekFeedbackBack : styles.seekFeedbackForward]}><Ionicons name={seekFeedback.direction < 0 ? 'play-back' : 'play-forward'} color={colors.white} size={24} /><Text style={styles.seekFeedbackText}>{seekFeedback.seconds} {t('seconds')}</Text></View>}
       {(!!playingRating?.rating || !!playingWarning) && <ContentRatingCard key={id} rating={playingRating} warning={playingWarning} active={ratingCardActive} fullscreen={isFullscreen} />}
       {skipIntroActive && <Animated.View pointerEvents={skipIntroVisible ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, skipIntroMotion]}><PressableScale disabled={isWatchParty && !canControlParty} onPress={skipIntro} style={[styles.skipIntro, isWatchParty && !canControlParty && { opacity: .45 }]}><Text style={styles.skipIntroText}>{t('Skip intro')}</Text><Ionicons name="play-skip-forward" color={colors.white} size={16} /></PressableScale></Animated.View>}
-      <Animated.View pointerEvents={chromeInteractive ? 'box-none' : 'none'} style={[styles.playerChrome, chromeMotion]}><View style={styles.swipeHandle} /><PressableScale accessibilityLabel={t(isWatchParty ? 'Minimize watch party' : 'Close player')} onPress={handleDismiss} style={styles.close}><Ionicons name={isWatchParty ? 'chevron-down' : 'close'} color={colors.white} size={25} /></PressableScale><PressableScale disabled={isWatchParty && !canControlParty} onPress={togglePlayback} style={[styles.centerPlay, isWatchParty && !canControlParty && { opacity: .45 }]}><Ionicons name={playingChange?.isPlaying ? 'pause' : 'play'} color={colors.white} size={27} /></PressableScale><GestureDetector gesture={progressGesture}><View onLayout={(event) => setProgressWidth(event.nativeEvent.layout.width)} style={styles.playerProgress}><View style={styles.playerProgressTrack}><View style={[styles.playerProgressFill, { width: `${playbackPercent}%` }]} /></View><View style={[styles.playerProgressThumb, { left: `${playbackPercent}%` }]} /></View></GestureDetector><View style={styles.compactControls}><PressableScale disabled={isWatchParty && !canControlParty} onPress={togglePlayback} style={[styles.controlButton, isWatchParty && !canControlParty && { opacity: .45 }]}><Ionicons name={playingChange?.isPlaying ? 'pause' : 'play'} color={colors.white} size={18} /></PressableScale><Text style={styles.controlTime}>{clock(clipTime)} / {clock(duration)}</Text>{isPlayingHDR && <View style={styles.hdrBadge}><Text style={styles.hdrBadgeText}>HDR</Text></View>}<View style={styles.controlSpacer} />{hasAudioChoices && <PressableScale accessibilityLabel={t('Audio tracks')} onPress={handleAudioTracks} style={styles.controlButton}><Ionicons name="musical-notes-outline" color={colors.white} size={18} /></PressableScale>}{hasCaptions && <PressableScale onPress={handleCaptions} style={styles.controlButton}><Ionicons name="logo-closed-captioning" color={player.subtitleTrack ? colors.accentBright : colors.white} size={19} /></PressableScale>}{hasQualityChoices && <PressableScale onPress={() => setQualityOpen(true)} style={styles.controlButton}><Ionicons name="settings-outline" color={colors.white} size={19} /></PressableScale>}<PressableScale onPress={toggleFullscreen} style={styles.controlButton}><Ionicons name={isFullscreen ? 'contract-outline' : 'scan-outline'} color={colors.white} size={20} /></PressableScale></View></Animated.View>
+      <Animated.View pointerEvents={chromeInteractive ? 'box-none' : 'none'} style={[styles.playerChrome, chromeMotion]}><View style={styles.swipeHandle} /><PressableScale accessibilityLabel={t(isWatchParty ? 'Minimize watch party' : 'Close player')} onPress={handleDismiss} style={styles.close}><Ionicons name={isWatchParty ? 'chevron-down' : 'close'} color={colors.white} size={25} /></PressableScale><PressableScale disabled={isWatchParty && !canControlParty} onPress={togglePlayback} style={[styles.centerPlay, isWatchParty && !canControlParty && { opacity: .45 }]}><Ionicons name={playingChange?.isPlaying ? 'pause' : 'play'} color={colors.white} size={27} /></PressableScale><GestureDetector gesture={progressGesture}><View onLayout={(event) => setProgressWidth(event.nativeEvent.layout.width)} style={styles.playerProgress}><View style={styles.playerProgressTrack}><View style={[styles.playerProgressFill, { width: `${playbackPercent}%` }]} /></View><View style={[styles.playerProgressThumb, { left: `${playbackPercent}%` }]} /></View></GestureDetector><View style={styles.compactControls}><PressableScale disabled={isWatchParty && !canControlParty} onPress={togglePlayback} style={[styles.controlButton, isWatchParty && !canControlParty && { opacity: .45 }]}><Ionicons name={playingChange?.isPlaying ? 'pause' : 'play'} color={colors.white} size={18} /></PressableScale><Text style={styles.controlTime}>{clock(clipTime)} / {clock(duration)}</Text>{isPlayingHDR && <View style={styles.hdrBadge}><Text style={styles.hdrBadgeText}>HDR</Text></View>}{isPlayingAtmos && <DolbyAtmosBadge />}<View style={styles.controlSpacer} />{hasAudioChoices && <PressableScale accessibilityLabel={t('Audio tracks')} onPress={handleAudioTracks} style={styles.controlButton}><Ionicons name="musical-notes-outline" color={colors.white} size={18} /></PressableScale>}{hasCaptions && <PressableScale onPress={handleCaptions} style={styles.controlButton}><Ionicons name="logo-closed-captioning" color={player.subtitleTrack ? colors.accentBright : colors.white} size={19} /></PressableScale>}{hasQualityChoices && <PressableScale onPress={() => setQualityOpen(true)} style={styles.controlButton}><Ionicons name="settings-outline" color={colors.white} size={19} /></PressableScale>}<PressableScale onPress={toggleFullscreen} style={styles.controlButton}><Ionicons name={isFullscreen ? 'contract-outline' : 'scan-outline'} color={colors.white} size={20} /></PressableScale></View></Animated.View>
       {introState !== 'done' && !partyID && <View style={styles.introOverlay}>
         {introState === 'playing'
           ? <VideoView player={introPlayer} style={StyleSheet.absoluteFill} nativeControls={false} fullscreenOptions={{ enable: false }} contentFit="contain" surfaceType="textureView" />
@@ -425,7 +431,7 @@ export default function VideoScreen() {
             {!!episode && <View style={styles.lockupEpisode}><Text style={styles.lockupBadge}>{t('S{season} · E{episode}', { season: episode.season_number || 1, episode: episode.episode_number || 1 })}</Text><Text numberOfLines={1} style={styles.lockupEpisodeTitle}>{episode.title}</Text></View>}
           </View>
         ) : <Text style={styles.title}>{video.title}</Text>}
-        <View style={styles.metaRow}><Text style={styles.meta}>{compactNumber(video.views)} {t(video.views === 1 ? 'view' : 'views')}</Text>{!!saved && <View style={styles.offlineBadge}><Ionicons name="download" size={11} color={colors.success} /><Text style={styles.offlineBadgeText}>{t('Downloaded')} · {saved.quality}</Text></View>}{isPlayingHDR && <View style={styles.hdrBadge}><Text style={styles.hdrBadgeText}>HDR</Text></View>}</View>
+        <View style={styles.metaRow}><Text style={styles.meta}>{compactNumber(video.views)} {t(video.views === 1 ? 'view' : 'views')}</Text>{!!saved && <View style={styles.offlineBadge}><Ionicons name="download" size={11} color={colors.success} /><Text style={styles.offlineBadgeText}>{t('Downloaded')} · {saved.quality}</Text></View>}{isPlayingHDR && <View style={styles.hdrBadge}><Text style={styles.hdrBadgeText}>HDR</Text></View>}{isPlayingAtmos && <DolbyAtmosBadge />}</View>
         {!!video.clip?.original_video_id && <ClipSource clip={video.clip} />}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actions}>
           <Action icon={liked.data?.liked ? 'thumbs-up' : 'thumbs-up-outline'} label={compactNumber(video.likes || 0)} active={liked.data?.liked} onPress={() => requireAccount() && likeMutation.mutate()} />

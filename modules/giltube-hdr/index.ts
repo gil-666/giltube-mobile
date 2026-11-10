@@ -5,9 +5,13 @@ export interface HDRCapabilities {
   hlgDisplay: boolean;
   hevcMain10HDR10Decoder: boolean;
   hevcMain10Decoder: boolean;
+  // Dolby Atmos (E-AC-3 JOC): decoded on the device, or passed through to a
+  // TV or receiver over HDMI.
+  atmosDecoder: boolean;
+  atmosPassthrough: boolean;
 }
 
-const unsupported: HDRCapabilities = { hdr10Display: false, hlgDisplay: false, hevcMain10HDR10Decoder: false, hevcMain10Decoder: false };
+const unsupported: HDRCapabilities = { hdr10Display: false, hlgDisplay: false, hevcMain10HDR10Decoder: false, hevcMain10Decoder: false, atmosDecoder: false, atmosPassthrough: false };
 
 // Optional: builds made before this module existed simply report no HDR.
 const native = requireOptionalNativeModule<{ getCapabilities(): HDRCapabilities }>('GiltubeHdr');
@@ -31,4 +35,10 @@ export function canPlayHDR(videoRange: 'PQ' | 'HLG' = 'PQ'): boolean {
 
 export function deviceSupportsHDR(): boolean {
   return canPlayHDR('PQ') || canPlayHDR('HLG');
+}
+
+// Builds made before Atmos support report neither field, so they stay on AAC.
+export function deviceSupportsAtmos(): boolean {
+  const caps = getHDRCapabilities();
+  return caps.atmosDecoder || caps.atmosPassthrough;
 }
