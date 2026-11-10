@@ -9,9 +9,11 @@ export interface AppSettings {
   doubleTapSeconds: 5 | 10 | 15;
   // Play the HDR ladder when the title and device support it.
   hdrEnabled: boolean;
+  // The movie version to play when a title has one ('' = the main 16:9 version, 'imax').
+  movieVersion: string;
 }
 
-const defaults: AppSettings = { language: 'system', pipEnabled: true, backgroundPlayback: true, resumePlayback: true, doubleTapSeconds: 10, hdrEnabled: true };
+const defaults: AppSettings = { language: 'system', pipEnabled: true, backgroundPlayback: true, resumePlayback: true, doubleTapSeconds: 10, hdrEnabled: true, movieVersion: '' };
 const storageKey = 'giltube.app-settings.v1';
 const Context = createContext<{ settings: AppSettings; ready: boolean; update: (values: Partial<AppSettings>) => Promise<void>; reset: () => Promise<void> } | null>(null);
 

@@ -42,7 +42,7 @@ export default function MovieDetailsScreen() {
         <Text style={styles.synopsis}>{movie.synopsis}</Text>
         {!!movie.directors?.length && <Credit label={t('Directed by')} value={movie.directors.join(', ')} />}
         {!!movie.cast?.length && <Credit label={t('Cast')} value={movie.cast.join(', ')} />}
-        <MediaBadges capabilities={movie.media_capabilities} rating={movie.content_rating} explicit={movie.explicit} />
+        <MediaBadges capabilities={movie.media_capabilities} rating={movie.content_rating} explicit={movie.explicit} versions={movie.versions?.map((version) => version.label).filter(Boolean)} />
       </View>
       <CatalogRail title={t('More like this')} items={related} kind="movie" />
     </>}

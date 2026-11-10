@@ -379,6 +379,14 @@ export interface Movie {
   content_rating?: ContentRating;
   /** TMDB title logos by language ("en", "es"). */
   logos?: Record<string, string>;
+  /** Alternate pictures (IMAX) that play with this movie's audio and subtitles. */
+  versions?: MovieVersion[];
+}
+
+export interface MovieVersion {
+  kind: string;
+  label: string;
+  hls_path: string;
 }
 
 export interface MovieCatalog {

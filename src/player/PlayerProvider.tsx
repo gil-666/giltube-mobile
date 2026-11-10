@@ -73,6 +73,11 @@ interface PlayerContextValue {
   playbackMasterURL: string;
   hdr: HDRState;
   setHDREnabled: (enabled: boolean) => Promise<void>;
+  // The alternate version playing ('' = the main version, 'imax').
+  versionKind: string;
+  // Switches to an alternate version's master (url) or back to the main one
+  // (kind '') at the current position. No-op for downloads.
+  setVersion: (kind: string, url: string) => Promise<void>;
   watchParty: WatchPartySnapshot | null;
   watchPartyEvent: { event: WatchPartyEvent; nonce: number } | null;
   // shouldAutoplay is evaluated once the source has loaded, so a caller (the
@@ -122,6 +127,10 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
   const sdrMasterRef = useRef('');
   const hdrMasterRef = useRef('');
   const hdrEnabledRef = useRef(settings.hdrEnabled);
+  const [versionKind, setVersionKind] = useState('');
+  const versionKindRef = useRef('');
+  // The main version's streamed master; empty for downloads and live.
+  const mainMasterRef = useRef('');
   const [watchParty, setWatchParty] = useState<WatchPartySnapshot | null>(null);
   const [watchPartyEvent, setWatchPartyEvent] = useState<{ event: WatchPartyEvent; nonce: number } | null>(null);
   const [toast, setToast] = useState<{ message: string; nonce: number } | null>(null);
@@ -230,6 +239,9 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     sourceRef.current = masterURI;
     sdrMasterRef.current = masterURI;
     hdrMasterRef.current = '';
+    mainMasterRef.current = masterURI.startsWith('file:') ? '' : masterURI;
+    versionKindRef.current = '';
+    setVersionKind('');
     applyHDR(noHDR);
     setPlaybackMasterURL(masterURI);
 	if (liveQualityLockTimerRef.current) clearTimeout(liveQualityLockTimerRef.current);
@@ -294,6 +306,9 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     sourceRef.current = uri;
     sdrMasterRef.current = '';
     hdrMasterRef.current = '';
+    mainMasterRef.current = '';
+    versionKindRef.current = '';
+    setVersionKind('');
     applyHDR(noHDR);
     setPlaybackMasterURL(uri);
 	liveMasterSourceRef.current = uri;
@@ -422,6 +437,63 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     await swapHDRSource(enabled);
   }, [swapHDRSource, updateSettings]);
 
+  // Reapplies audio and subtitle choices once a new source lists its tracks.
+  const restoreTracks = useCallback((operation: number, audio: typeof player.audioTrack, subtitle: typeof player.subtitleTrack) => {
+    const same = (a?: { language?: string; label?: string; name?: string } | null, b?: { language?: string; label?: string; name?: string } | null) =>
+      !!a && !!b && (a.language || '') === (b.language || '') && (a.name || a.label || '') === (b.name || b.label || '');
+    let attempts = 0;
+    const apply = () => {
+      if (operation !== operationRef.current) return;
+      const audioTracks = player.availableAudioTracks;
+      if (!audioTracks.length && attempts++ < 40) { setTimeout(apply, 250); return; }
+      const audioMatch = audio && (audioTracks.find((track) => same(track, audio)) || audioTracks.find((track) => (track.language || '') === (audio.language || '')));
+      if (audioMatch) player.audioTrack = audioMatch;
+      if (!subtitle) player.subtitleTrack = null;
+      else {
+        const subtitleMatch = player.availableSubtitleTracks.find((track) => same(track, subtitle)) || player.availableSubtitleTracks.find((track) => (track.language || '') === (subtitle.language || ''));
+        if (subtitleMatch) player.subtitleTrack = subtitleMatch;
+      }
+    };
+    setTimeout(apply, 250);
+  }, [player]);
+
+  // Swaps between the main version and an alternate one (IMAX) at the current
+  // position. The alternate master shares the main audio and subtitles and has
+  // its own HDR and Atmos siblings, resolved like the main master's.
+  const setVersion = useCallback(async (kind: string, url: string) => {
+    const current = videoRef.current;
+    const base = kind ? url : mainMasterRef.current;
+    if (!current || !base || !mainMasterRef.current || kind === versionKindRef.current) return;
+    const operation = ++operationRef.current;
+    const position = player.currentTime;
+    const wasPlaying = player.playing;
+    // Both versions list the same renditions: keep the viewer's choices.
+    const audio = player.audioTrack;
+    const subtitle = player.subtitleTrack;
+    setIsLoading(true);
+    try {
+      const resolved = await resolvePlaybackSource(base, hdrEnabledRef.current);
+      if (operation !== operationRef.current) return;
+      await replacePlayerSource({ uri: resolved.uri, contentType: 'hls', metadata: { title: current.title, artist: current.channel?.name || 'GilTube', artwork: resolveMediaURL(current.thumbnail_url) } });
+      if (operation !== operationRef.current) return;
+      sourceRef.current = resolved.uri;
+      sdrMasterRef.current = resolved.sdrURI;
+      hdrMasterRef.current = resolved.hdrURI;
+      versionKindRef.current = kind;
+      setVersionKind(kind);
+      setPlaybackMasterURL(resolved.uri);
+      setQuality('Auto');
+      applyHDR(resolved.hdr);
+      player.currentTime = position;
+      setIsLoading(false);
+      if (wasPlaying) player.play();
+      restoreTracks(operation, audio, subtitle);
+    } catch (error) {
+      if (operation === operationRef.current) setIsLoading(false);
+      throw error;
+    }
+  }, [applyHDR, player, replacePlayerSource, restoreTracks]);
+
   // A decoder that rejects the Atmos audio or the HEVC HDR ladder must not
   // strand playback: drop back to AAC first, then to SDR, at the same position.
   useEffect(() => {
@@ -433,12 +505,16 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
         void swapHDRSource(hdrRef.current.playing).catch(() => undefined);
         return;
       }
-      if (!hdrRef.current.playing) return;
-      hdrMasterRef.current = '';
-      void swapHDRSource(false).catch(() => undefined);
+      if (hdrRef.current.playing) {
+        hdrMasterRef.current = '';
+        void swapHDRSource(false).catch(() => undefined);
+        return;
+      }
+      // An alternate version that cannot play falls back to the main one.
+      if (versionKindRef.current) void setVersion('', '').catch(() => undefined);
     });
     return () => subscription.remove();
-  }, [player, swapHDRSource]);
+  }, [player, setVersion, swapHDRSource]);
 
   // Keeps a clip inside its range, like the website: seeking before it jumps to
   // its start, and reaching its end pauses back at the start.
@@ -487,6 +563,9 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
     sourceRef.current = '';
 	liveMasterSourceRef.current = '';
     sdrMasterRef.current = '';
+    mainMasterRef.current = '';
+    versionKindRef.current = '';
+    setVersionKind('');
     hdrMasterRef.current = '';
     applyHDR(noHDR);
     setPlaybackMasterURL('');
@@ -731,8 +810,8 @@ export function PlayerProvider({ children }: React.PropsWithChildren) {
   }, [mode, player]);
 
   const value = useMemo(
-    () => ({ player, video, clipRange, liveStream, mode, quality, liveQualityOptions, isLoading, playbackMasterURL, hdr, setHDREnabled, watchParty, watchPartyEvent, play, playLive, switchQuality, joinWatchParty, refreshWatchParty, sendWatchPartyPlayback, leaveWatchParty, minimize, expand, dismiss, syncClip }),
-    [player, video, clipRange, liveStream, mode, quality, liveQualityOptions, isLoading, playbackMasterURL, hdr, setHDREnabled, watchParty, watchPartyEvent, play, playLive, switchQuality, joinWatchParty, refreshWatchParty, sendWatchPartyPlayback, leaveWatchParty, minimize, expand, dismiss, syncClip],
+    () => ({ player, video, clipRange, liveStream, mode, quality, liveQualityOptions, isLoading, playbackMasterURL, hdr, setHDREnabled, versionKind, setVersion, watchParty, watchPartyEvent, play, playLive, switchQuality, joinWatchParty, refreshWatchParty, sendWatchPartyPlayback, leaveWatchParty, minimize, expand, dismiss, syncClip }),
+    [player, video, clipRange, liveStream, mode, quality, liveQualityOptions, isLoading, playbackMasterURL, hdr, setHDREnabled, versionKind, setVersion, watchParty, watchPartyEvent, play, playLive, switchQuality, joinWatchParty, refreshWatchParty, sendWatchPartyPlayback, leaveWatchParty, minimize, expand, dismiss, syncClip],
   );
 
   return (

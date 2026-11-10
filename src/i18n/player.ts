@@ -15,4 +15,10 @@ export const playerEsMX: Record<string, string> = {
   'Listen': 'Escuchar',
   'Open album': 'Abrir álbum',
   'Play live stream': 'Reproducir transmisión en vivo',
+  '{version} version available': 'Versión {version} disponible',
+  'Version': 'Versión',
+  '16:9': '16:9',
+  'Standard picture': 'Imagen estándar',
+  'Expanded picture, same audio and subtitles': 'Imagen ampliada, mismo audio y subtítulos',
+  'Could not switch version': 'No se pudo cambiar de versión',
 };
