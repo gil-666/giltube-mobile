@@ -693,4 +693,6 @@ export const esMX: Record<string, string> = {
 	,"Updates and announcements from the GilTube team": "Novedades y anuncios del equipo de GilTube"
 	,"FROM GILTUBE": "DE GILTUBE"
 	,"News from GilTube": "Noticias de GilTube"
+	,"S{season} · E{episode}": "T{season} · E{episode}"
+	,"Play now": "Jugar ahora"
 };

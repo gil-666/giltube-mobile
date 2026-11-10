@@ -71,6 +71,8 @@ export const giltubeAPI = {
   account: () => apiRequest<Account>('/account/me'),
   home: () => apiRequest<HomeRecommendations>('/recommendations/home?limit=72'),
 	featuredContent: () => apiRequest<{ items: FeaturedContent[] }>('/featured'),
+	promotions: (placement = 'home') => apiRequest<{ promotions: import('@/types/api').Promotion[] }>(`/promotions?placement=${encodeURIComponent(placement)}`).then((data) => data?.promotions || []),
+	promotionEvent: (id: string, event: 'impression' | 'click') => apiRequest<null>(`/promotions/${encodeURIComponent(id)}/${event}`, { method: 'POST' }).catch(() => null),
   activeLiveStreams: () => apiRequest<LiveStream[]>('/live/active'),
   liveStream: (channelID: string) => apiRequest<LiveStream>(`/live/channels/${encodeURIComponent(channelID)}`),
   myLiveStream: (channelID: string) => apiRequest<MyLiveStream>(`/live/me?channel_id=${encodeURIComponent(channelID)}`),

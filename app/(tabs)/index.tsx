@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -18,6 +18,7 @@ import { CatalogRail } from '@/components/StreamingCatalog';
 import { LiveStreamRail } from '@/live/LiveStreamCard';
 import { useI18n } from '@/i18n';
 import { MusicPromoShelf } from '@/music/components/MusicPromoShelf';
+import { PromoSlot } from '@/promo/PromoBanner';
 import { openLive, openVideo } from '@/player/navigation';
 import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
@@ -28,6 +29,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { t, compactNumber } = useI18n();
   const { status } = useAuth(); const signedIn = status === 'signedIn';
+  const queryClient = useQueryClient();
   const home = useQuery({ queryKey: ['home'], queryFn: giltubeAPI.home });
 	const featured = useQuery({ queryKey: ['featured-content'], queryFn: giltubeAPI.featuredContent, refetchInterval: 60_000 });
 	const [featuredIndex, setFeaturedIndex] = useState(0);
@@ -75,7 +77,7 @@ export default function HomeScreen() {
     <View style={styles.screen}><BlurView intensity={48} tint="dark" experimentalBlurMethod="dimezisBlurView" style={[styles.header, { height: insets.top + 62, paddingTop: insets.top }]}><Brand compact /><PressableScale accessibilityLabel={t('Notifications')} onPress={() => router.push(signedIn ? '/notifications' : '/login')} style={[styles.headerButton, styles.notificationButton]}><Ionicons name="notifications-outline" color={colors.white} size={23} />{!!unread.data?.unread_count && <View style={styles.notificationBadge}><Text style={styles.notificationBadgeText}>{unread.data.unread_count > 99 ? '99+' : unread.data.unread_count}</Text></View>}</PressableScale><PressableScale accessibilityLabel={t('Search')} onPress={() => router.push('/(tabs)/search')} style={styles.headerButton}><Ionicons name="search" color={colors.white} size={22} /></PressableScale></BlurView><ScrollView
       style={styles.screen}
       contentContainerStyle={{ paddingBottom: insets.bottom + 104 }}
-      refreshControl={<RefreshControl refreshing={home.isRefetching || featured.isRefetching || live.isRefetching || movies.isRefetching || series.isRefetching} onRefresh={() => { void home.refetch(); void featured.refetch(); void live.refetch(); void movies.refetch(); void series.refetch(); }} tintColor={colors.accentBright} />}
+      refreshControl={<RefreshControl refreshing={home.isRefetching || featured.isRefetching || live.isRefetching || movies.isRefetching || series.isRefetching} onRefresh={() => { void home.refetch(); void featured.refetch(); void live.refetch(); void movies.refetch(); void series.refetch(); void queryClient.invalidateQueries({ queryKey: ['promotions'] }); }} tintColor={colors.accentBright} />}
     >
       {home.isLoading && <ActivityIndicator style={styles.loader} color={colors.accentBright} size="large" />}
       {home.isError && !featuredItems.length && (
@@ -104,15 +106,21 @@ export default function HomeScreen() {
 
       {!!home.data && (
         <>
+          <PromoSlot placement="top" />
           <LiveStreamRail streams={live.data || []} />
+          <PromoSlot placement="after-live" />
           {!!recent.data?.items.length && <SectionRail title={t('Continue watching')} subtitle={t('Pick up where you left off')} videos={recent.data.items.map((item) => item.video)} progressByVideoID={progressByVideoID} />}
+          <PromoSlot placement="after-continue" />
           <SectionRail title={t('Recommended')} subtitle={home.data.personalized ? t('Picked from what you watch') : undefined} videos={rails.recommended} progressByVideoID={progressByVideoID} />
           <MusicPromoShelf />
           <SectionRail title={t('Trending now')} videos={rails.trending} progressByVideoID={progressByVideoID} />
           <SectionRail title={t('Trusted channels')} videos={rails.trusted} progressByVideoID={progressByVideoID} />
           <View style={styles.destinations}><PressableScale onPress={() => router.push('/movies')} style={styles.destination}><LinearGradient colors={[colors.accentDark, colors.surface]} style={StyleSheet.absoluteFill} /><Text style={styles.destinationKicker}>GILTUBE</Text><Text style={styles.destinationTitle}>{t('Movies')}</Text><Text style={styles.destinationMeta}>{t('Feature films')}</Text></PressableScale><PressableScale onPress={() => router.push('/series')} style={styles.destination}><LinearGradient colors={['#164e63', colors.surface]} style={StyleSheet.absoluteFill} /><Text style={[styles.destinationKicker, { color: colors.gilid }]}>GILTUBE</Text><Text style={styles.destinationTitle}>{t('Series')}</Text><Text style={styles.destinationMeta}>{t('Episodes & seasons')}</Text></PressableScale></View>
           {!!movies.data?.movies.length && <CatalogRail title={t('Movies for tonight')} items={movies.data.movies.slice(0, 12)} kind="movie" />}
+          <PromoSlot placement="after-movies" />
           {!!series.data?.series.length && <CatalogRail title={t('Binge-worthy series')} items={series.data.series.slice(0, 12)} kind="series" />}
+          <PromoSlot placement="after-series" />
+          <PromoSlot placement="before-videos" />
           <SectionRail title={t('Fresh uploads')} videos={rails.fresh} progressByVideoID={progressByVideoID} />
           <SectionRail title={t('Explore more')} videos={rails.browse} progressByVideoID={progressByVideoID} />
         </>

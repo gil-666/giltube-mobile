@@ -376,6 +376,8 @@ export interface Movie {
   video?: Video;
   media_capabilities?: MediaCapabilities;
   content_rating?: ContentRating;
+  /** TMDB title logos by language ("en", "es"). */
+  logos?: Record<string, string>;
 }
 
 export interface MovieCatalog {
@@ -419,6 +421,8 @@ export interface Series {
   first_episode?: SeriesEpisode;
   media_capabilities?: MediaCapabilities;
   content_rating?: ContentRating;
+  /** TMDB title logos by language ("en", "es"). */
+  logos?: Record<string, string>;
 }
 
 export interface SeriesCatalog {
@@ -493,4 +497,36 @@ export interface AuthSession {
 
 export interface MobileAuthCallbackResponse {
   app_redirect_url?: string;
+}
+
+/** Translated promotion text; empty fields fall back to the main text. */
+export interface PromotionText {
+  label?: string;
+  title?: string;
+  tagline?: string;
+  badge?: string;
+  cta_label?: string;
+  partner_caption?: string;
+}
+
+/** A home-page promotion row (a house ad, such as a GilServers Games title). */
+export interface Promotion {
+  id: string;
+  placement: string;
+  label: string;
+  title: string;
+  tagline: string;
+  badge: string;
+  cta_label: string;
+  url: string;
+  partner_caption: string;
+  logo_url: string;
+  logo_style: 'white' | 'original';
+  partner_url: string;
+  partner_style: 'card' | 'original';
+  sprite_url: string;
+  effect: 'none' | 'flutter';
+  scene: 'none' | 'lighthouse';
+  theme: { from: string; via: string; to: string; accent: string };
+  translations?: Record<string, PromotionText>;
 }
