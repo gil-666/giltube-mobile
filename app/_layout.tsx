@@ -1,15 +1,17 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { setContentLanguage } from '@/api/client';
 import { AuthProvider } from '@/auth/AuthProvider';
 import { AppLinkVerificationPrompt } from '@/app-links/AppLinkVerificationPrompt';
 import { ChannelProvider } from '@/channels/ChannelProvider';
+import { useI18n } from '@/i18n';
 import { DownloadProvider } from '@/downloads/DownloadProvider';
 import { MusicDownloadsProvider } from '@/music/MusicDownloadsProvider';
 import { MusicPlayerProvider } from '@/music/MusicPlayerProvider';
@@ -40,6 +42,7 @@ export default function RootLayout() {
           <AuthProvider><ThemeProvider>
             <AppSettingsProvider><ChannelProvider><NotificationProvider><DownloadProvider>
               <PlayerProvider><MusicDownloadsProvider><MusicPlayerProvider>
+                <ContentLanguageSync />
                 <AppLinkVerificationPrompt />
                 <PlayStoreUpdatePrompt />
                 <ThemedNavigator />
@@ -51,6 +54,22 @@ export default function RootLayout() {
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
+}
+
+// Keeps catalog requests in the app language and refetches them when it
+// changes. Set during render so the first requests already carry it.
+function ContentLanguageSync() {
+  const { locale } = useI18n();
+  const queryClient = useQueryClient();
+  const language = locale === 'es-MX' ? 'es' : '';
+  setContentLanguage(language);
+  const previous = useRef(language);
+  useEffect(() => {
+    if (previous.current === language) return;
+    previous.current = language;
+    void queryClient.invalidateQueries();
+  }, [language, queryClient]);
+  return null;
 }
 
 // Re-renders the navigator on theme changes (screen background, status bar)

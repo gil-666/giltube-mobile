@@ -17,6 +17,20 @@ export function setAPISession(token: string | null) {
 
 export function getAPISession() { return sessionToken; }
 
+// The catalog language ('es' or '' for English) sent with movie, series and
+// search requests, so titles and synopses come back translated.
+let contentLanguage = '';
+
+export function setContentLanguage(language: string) {
+  contentLanguage = language;
+}
+
+/** path with ?lang= for the current catalog language. */
+export function localizedPath(path: string) {
+  if (!contentLanguage) return path;
+  return `${path}${path.includes('?') ? '&' : '?'}lang=${contentLanguage}`;
+}
+
 export async function authenticatedFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   if (!headers.has('Accept')) headers.set('Accept', 'application/json');

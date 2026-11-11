@@ -1,6 +1,6 @@
 import { File } from 'expo-file-system';
 
-import { apiRequest } from './client';
+import { apiRequest, localizedPath } from './client';
 import type {
   Account,
   RelatedMedia,
@@ -101,24 +101,24 @@ export const giltubeAPI = {
   videos: (channelID: string) => apiRequest<Video[]>(`/my-videos?channel_id=${encodeURIComponent(channelID)}`),
   deleteVideo: (id: string) => apiRequest(`/videos/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   categories: () => apiRequest<Category[]>('/categories/all'),
-  movies: () => apiRequest<MovieCatalog>('/movies'),
-  movie: (id: string) => apiRequest<{ movie: Movie }>(`/movies/${encodeURIComponent(id)}`),
-  movieContext: (videoID: string) => apiRequest<{ movie: Movie }>(`/movie-videos/${encodeURIComponent(videoID)}`),
-  movieTrailerContext: (videoID: string) => apiRequest<{ movie: Movie }>(`/movie-trailers/${encodeURIComponent(videoID)}`),
-  series: () => apiRequest<SeriesCatalog>('/series'),
-  seriesDetail: (id: string) => apiRequest<SeriesDetail>(`/series/${encodeURIComponent(id)}`),
-  seriesContext: (videoID: string) => apiRequest<SeriesContext>(`/series-episodes/${encodeURIComponent(videoID)}`),
+  movies: () => apiRequest<MovieCatalog>(localizedPath('/movies')),
+  movie: (id: string) => apiRequest<{ movie: Movie }>(localizedPath(`/movies/${encodeURIComponent(id)}`)),
+  movieContext: (videoID: string) => apiRequest<{ movie: Movie }>(localizedPath(`/movie-videos/${encodeURIComponent(videoID)}`)),
+  movieTrailerContext: (videoID: string) => apiRequest<{ movie: Movie }>(localizedPath(`/movie-trailers/${encodeURIComponent(videoID)}`)),
+  series: () => apiRequest<SeriesCatalog>(localizedPath('/series')),
+  seriesDetail: (id: string) => apiRequest<SeriesDetail>(localizedPath(`/series/${encodeURIComponent(id)}`)),
+  seriesContext: (videoID: string) => apiRequest<SeriesContext>(localizedPath(`/series-episodes/${encodeURIComponent(videoID)}`)),
   playbackIntro: (videoID: string) =>
     apiRequest<PlaybackIntro>(`/playback-intro?video_id=${encodeURIComponent(videoID)}`),
-  seriesTrailerContext: (videoID: string) => apiRequest<{ series: Series }>(`/series-trailers/${encodeURIComponent(videoID)}`),
+  seriesTrailerContext: (videoID: string) => apiRequest<{ series: Series }>(localizedPath(`/series-trailers/${encodeURIComponent(videoID)}`)),
   channelAnalytics: (channelID: string) => apiRequest<ChannelAnalytics>(`/channels/${encodeURIComponent(channelID)}/analytics`),
   prepareDownload: (id: string, quality = 'best') =>
     apiRequest<DownloadPreparation>(`/videos/${encodeURIComponent(id)}/download?quality=${encodeURIComponent(quality)}`),
   downloadStatus: (id: string, quality: string) =>
     apiRequest<DownloadPreparation>(`/videos/${encodeURIComponent(id)}/download-status?quality=${encodeURIComponent(quality)}`),
-  search: (query: string, page = 1) => apiRequest<SearchResponse>(`/search?q=${encodeURIComponent(query)}&page=${page}`),
+  search: (query: string, page = 1) => apiRequest<SearchResponse>(localizedPath(`/search?q=${encodeURIComponent(query)}&page=${page}`)),
   searchSuggestions: (query: string, limit = 10) =>
-    apiRequest<{ suggestions: SearchResult[] }>(`/search/suggest?q=${encodeURIComponent(query)}&limit=${limit}`),
+    apiRequest<{ suggestions: SearchResult[] }>(localizedPath(`/search/suggest?q=${encodeURIComponent(query)}&limit=${limit}`)),
   relatedVideos: (id: string, limit = 10) => apiRequest<Video[]>(`/videos/${encodeURIComponent(id)}/related?limit=${limit}`),
   relatedMedia: (id: string, limit = 4) => apiRequest<RelatedMedia[]>(`/videos/${encodeURIComponent(id)}/related-media?limit=${limit}`),
   publicWatchParties: () => apiRequest<PublicWatchParty[]>('/watch-parties/public'),
