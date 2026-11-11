@@ -23,6 +23,10 @@ export function TitleLogo({ logos, title, maxWidth, maxHeight, textStyle, number
       <Image
         source={uri}
         contentFit="contain"
+        // Measured in a 1x1 view before it is sized: downscaled to fit that,
+        // a very wide logo (LA ODISEA, 500x46) rounds to 0 px tall and fails
+        // to decode on Android. Logos are small, so decode them whole.
+        allowDownscaling={false}
         transition={250}
         style={loaded ? { width: size.width, height: size.height } : { position: 'absolute', width: 1, height: 1, opacity: 0 }}
         onLoad={(event) => {

@@ -2,7 +2,7 @@
   "expo": {
     "name": "GilTube",
     "slug": "giltube",
-    "version": "0.9.45",
+    "version": "0.9.46",
     "scheme": "giltube",
     "icon": "./assets/images/giltube-icon-safe.png",
     "orientation": "default",
@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.gilservers.giltube",
-      "versionCode": 59,
+      "versionCode": 60,
       "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./google-services.json",
       "intentFilters": [

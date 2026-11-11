@@ -1,0 +1,10 @@
+[
+ {
+  "language": "en-US",
+  "text": "Fixes title logos that are very wide, such as LA ODISEA, showing as plain text instead of the logo."
+ },
+ {
+  "language": "es-419",
+  "text": "Corrige los logos de título muy anchos, como el de LA ODISEA, que se mostraban como texto en lugar del logo."
+ }
+]
