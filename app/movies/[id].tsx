@@ -13,6 +13,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { MediaBadges } from '@/components/MediaBadges';
 import { TitleLogo } from '@/components/TitleLogo';
 import { useI18n } from '@/i18n';
+import { localizeLanguageName } from '@/utils/trackLabels';
 import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
 import { formatPlaybackTime, isResumable } from '@/utils/watchProgress';
@@ -20,7 +21,7 @@ import { openVideo } from '@/player/navigation';
 
 export default function MovieDetailsScreen() {
   const styles = useStyles();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { width: windowWidth } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
@@ -42,6 +43,8 @@ export default function MovieDetailsScreen() {
         <Text style={styles.synopsis}>{movie.synopsis}</Text>
         {!!movie.directors?.length && <Credit label={t('Directed by')} value={movie.directors.join(', ')} />}
         {!!movie.cast?.length && <Credit label={t('Cast')} value={movie.cast.join(', ')} />}
+        {!!movie.media_capabilities?.audio_languages?.length && <Credit label={t('Audio')} value={movie.media_capabilities.audio_languages.map((name) => localizeLanguageName(name, locale)).join(', ')} />}
+        {!!movie.media_capabilities?.caption_languages?.length && <Credit label={t('Subtitles')} value={movie.media_capabilities.caption_languages.map((name) => localizeLanguageName(name, locale)).join(', ')} />}
         <MediaBadges capabilities={movie.media_capabilities} rating={movie.content_rating} explicit={movie.explicit} versions={[...(movie.imax ? ['IMAX'] : []), ...(movie.versions?.map((version) => version.label).filter((label) => label && label !== 'IMAX') ?? [])]} />
       </View>
       <CatalogRail title={t('More like this')} items={related} kind="movie" />

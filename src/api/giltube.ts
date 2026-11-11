@@ -167,7 +167,7 @@ export const giltubeAPI = {
   seriesProgress: (seriesID: string) =>
     apiRequest<{ progress: WatchProgress | null; episode?: SeriesEpisode }>(`/series/${encodeURIComponent(seriesID)}/progress`),
   recentWatchProgress: (limit = 12) =>
-    apiRequest<{ items: ContinueWatchingItem[] }>(`/watch-progress/recent?limit=${limit}`),
+    apiRequest<{ items: ContinueWatchingItem[] }>(localizedPath(`/watch-progress/recent?limit=${limit}`)),
   channel: async (channelID: string) => {
     const response = await apiRequest<{ channel: Channel; owner_username: string }>(`/channels/${encodeURIComponent(channelID)}/info`);
     return response.channel;
