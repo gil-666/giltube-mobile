@@ -2,7 +2,7 @@
 
 Native iOS and Android client for GilTube, built with React Native and Expo (SDK 57, React Native 0.86, New Architecture, Expo Router with typed routes, React Compiler).
 
-Current version: `0.9.42` (Android `versionCode` 56) in `package.json`, `app.json` and `android/app/build.gradle`.
+Current version: `0.9.43` (Android `versionCode` 57) in `package.json`, `app.json` and `android/app/build.gradle`.
 
 ## Features
 

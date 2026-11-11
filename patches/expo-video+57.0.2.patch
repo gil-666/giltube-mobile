@@ -1,3 +1,41 @@
+diff --git a/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayerAudioTracks.kt b/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayerAudioTracks.kt
+index fbccab6..54b2ed7 100644
+--- a/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayerAudioTracks.kt
++++ b/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayerAudioTracks.kt
+@@ -121,6 +121,13 @@ class VideoPlayerAudioTracks(owner: VideoPlayer) : VideoPlayerListener {
+       return@let null
+     }
+ 
+-    return overriddenFormat ?: preferredFormat
++    // Without an override or language preference, report the track ExoPlayer
++    // picked itself (the playlist's DEFAULT), so the current track is known.
++    val playingFormat: Format? = videoPlayer?.player?.currentTracks?.groups?.firstNotNullOfOrNull { group ->
++      if (group.type != C.TRACK_TYPE_AUDIO) return@firstNotNullOfOrNull null
++      (0..<group.length).firstOrNull { group.isTrackSelected(it) }?.let { group.getTrackFormat(it) }
++    }
++
++    return overriddenFormat ?: playingFormat ?: preferredFormat
+   }
+ }
+diff --git a/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayerSubtitles.kt b/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayerSubtitles.kt
+index cbe1e59..3b153cc 100644
+--- a/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayerSubtitles.kt
++++ b/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayerSubtitles.kt
+@@ -121,6 +121,13 @@ class VideoPlayerSubtitles(owner: VideoPlayer) : VideoPlayerListener {
+       return@let null
+     }
+ 
+-    return overriddenFormat ?: preferredFormat
++    // Without an override or language preference, report the track ExoPlayer
++    // picked itself (the playlist's DEFAULT), so the current track is known.
++    val playingFormat: Format? = videoPlayer?.player?.currentTracks?.groups?.firstNotNullOfOrNull { group ->
++      if (group.type != C.TRACK_TYPE_TEXT) return@firstNotNullOfOrNull null
++      (0..<group.length).firstOrNull { group.isTrackSelected(it) }?.let { group.getTrackFormat(it) }
++    }
++
++    return overriddenFormat ?: playingFormat ?: preferredFormat
+   }
+ }
 diff --git a/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt b/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt
 index 52bdcd8..3f830be 100644
 --- a/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt

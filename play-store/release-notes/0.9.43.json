@@ -1,0 +1,10 @@
+[
+ {
+  "language": "en-US",
+  "text": "The audio and subtitle menus now mark the track that is playing from the start. Turning on subtitles shows the line being spoken right away instead of waiting for the next one. Movies uploaded in IMAX show the IMAX badge, and movie and series pages drop the GilTube label."
+ },
+ {
+  "language": "es-419",
+  "text": "Los menús de audio y subtítulos ahora marcan la pista que se reproduce desde el inicio. Al activar los subtítulos, la línea que se está diciendo aparece de inmediato en lugar de esperar a la siguiente. Las películas subidas en IMAX muestran el distintivo IMAX, y las páginas de películas y series ya no muestran la etiqueta de GilTube."
+ }
+]

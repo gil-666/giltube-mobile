@@ -381,6 +381,8 @@ export interface Movie {
   logos?: Record<string, string>;
   /** Alternate pictures (IMAX) that play with this movie's audio and subtitles. */
   versions?: MovieVersion[];
+  /** The main version is itself the IMAX picture. */
+  imax?: boolean;
 }
 
 export interface MovieVersion {
