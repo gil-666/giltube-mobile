@@ -15,6 +15,15 @@ Usage:
       NOTES_JSON is a list of {"language": ..., "text": ...} objects
       (see play-store/release-notes/).
 
+  python3 play-store/publish.py promote --version-code CODE --name NAME
+      --notes NOTES_JSON TRACK [TRACK ...]
+      Release an already uploaded build on more tracks (no upload).
+
+Tracks: `internal`, `alpha` (closed testing, the original testers' email
+list) and "Public beta" (closed testing for people who sign up on the
+website's Download app page; testers are a Google Group). Release to all
+three: internal alpha "Public beta".
+
 Example:
   python3 play-store/publish.py release \\
       --aab dist/play-store-0.9.38/GilTube-0.9.38-play-store.aab \\
@@ -28,6 +37,7 @@ import os
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from cryptography.hazmat.primitives import hashes, serialization
@@ -107,7 +117,18 @@ def release(tok, aab, symbols, version_code, name, notes, tracks):
         print("uploaded native debug symbols")
     for track in tracks:
         new_release = {"name": name, "versionCodes": [str(version_code)], "status": "completed", "releaseNotes": notes}
-        updated = call(tok, "PUT", f"{API}/edits/{edit}/tracks/{track}", {"track": track, "releases": [new_release]})
+        updated = call(tok, "PUT", f"{API}/edits/{edit}/tracks/{urllib.parse.quote(track)}", {"track": track, "releases": [new_release]})
+        print("track", track, "->", json.dumps(updated.get("releases"), ensure_ascii=False))
+    committed = call(tok, "POST", f"{API}/edits/{edit}:commit")
+    print("committed edit", committed.get("id"))
+
+
+def promote(tok, version_code, name, notes, tracks):
+    edit = call(tok, "POST", f"{API}/edits", {})["id"]
+    print("edit", edit)
+    for track in tracks:
+        new_release = {"name": name, "versionCodes": [str(version_code)], "status": "completed", "releaseNotes": notes}
+        updated = call(tok, "PUT", f"{API}/edits/{edit}/tracks/{urllib.parse.quote(track)}", {"track": track, "releases": [new_release]})
         print("track", track, "->", json.dumps(updated.get("releases"), ensure_ascii=False))
     committed = call(tok, "POST", f"{API}/edits/{edit}:commit")
     print("committed edit", committed.get("id"))
@@ -123,12 +144,20 @@ def main():
     rel.add_argument("--name", required=True, help='release name, e.g. "0.9.38 (52)"')
     rel.add_argument("--notes", required=True, help="release notes JSON file")
     rel.add_argument("--symbols", help="native debug symbols zip for this build")
-    rel.add_argument("tracks", nargs="+", help="e.g. internal alpha")
+    rel.add_argument("tracks", nargs="+", help='e.g. internal alpha "Public beta"')
+    pro = commands.add_parser("promote", help="release an uploaded build on more tracks")
+    pro.add_argument("--version-code", required=True, type=int)
+    pro.add_argument("--name", required=True)
+    pro.add_argument("--notes", required=True)
+    pro.add_argument("tracks", nargs="+")
     args = parser.parse_args()
 
     tok = token()
     if args.command == "tracks":
         list_tracks(tok)
+    elif args.command == "promote":
+        with open(args.notes, encoding="utf-8") as f:
+            promote(tok, args.version_code, args.name, json.load(f), args.tracks)
     else:
         with open(args.notes, encoding="utf-8") as f:
             notes = json.load(f)
