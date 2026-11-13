@@ -116,6 +116,11 @@ const strings: Record<string, string> = {
   'Danger zone': 'Zona de peligro',
   'Delete video': 'Eliminar video',
   'Delete "{title}"? Its files, comments and tracks are removed permanently.': '¿Eliminar "{title}"? Sus archivos, comentarios y pistas se eliminarán permanentemente.',
+  // Public YouTube import / channel verification
+  "Remove check": "Quitar verificación",
+  "Remove verified check?": "¿Quitar la verificación?",
+  "Remove the verified check from \"{name}\"?": "¿Quitar la verificación de \"{name}\"?",
+  "Remove": "Quitar",
 };
 
 export default strings;

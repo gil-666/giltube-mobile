@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { peopleAPI, peopleKeys, type AdminChannel } from '@/admin/people/api';
-import { ModerationButtons, SearchField, StatusBadge, normalizedStatus, statusFilterOptions, useModeration, type StatusFilter } from '@/admin/people/shared';
+import { ModerationButtons, SearchField, StatusBadge, VerifyChannelButton, normalizedStatus, statusFilterOptions, useModeration, type StatusFilter } from '@/admin/people/shared';
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminChips, AdminEmpty, AdminError, AdminLoading, AdminScreen, adminStyles, useIsAdmin } from '@/admin/ui';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
@@ -68,7 +68,7 @@ function ChannelCard({ channel, moderation }: { channel: AdminChannel; moderatio
   return <AdminCard>
     <PressableScale onPress={open} style={styles.head}>
       <View style={styles.headCopy}>
-        <Text numberOfLines={1} style={styles.name}>{channel.name}</Text>
+        <View style={styles.nameRow}><Text numberOfLines={1} style={styles.name}>{channel.name}</Text>{channel.verified && <Ionicons name="checkmark-circle" color={colors.text} size={15} />}</View>
         <Text numberOfLines={1} style={adminStyles.muted}>@{channel.username}</Text>
       </View>
       <View style={styles.badges}>
@@ -81,6 +81,7 @@ function ChannelCard({ channel, moderation }: { channel: AdminChannel; moderatio
     {!!channel.created_at && <Text style={adminStyles.muted}>{t('Created {date}', { date: dateTime(channel.created_at, { dateStyle: 'medium' }) })}</Text>}
     <AdminButtons>
       <AdminButton compact icon="film-outline" label={t('Videos')} onPress={open} />
+      <VerifyChannelButton id={channel.id} name={channel.name} verified={channel.verified} />
       <ModerationButtons kind="channel" id={channel.id} name={channel.name} status={channel.status} isProtected={isProtected} moderation={moderation} />
     </AdminButtons>
   </AdminCard>;
@@ -90,7 +91,8 @@ const useStyles = makeStyles(() => ({
   count: { color: colors.textDim, fontSize: 11, fontWeight: '700', marginTop: 14, marginBottom: 8 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headCopy: { flex: 1, minWidth: 0 },
-  name: { color: colors.text, fontSize: 15, fontWeight: '800' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  name: { flexShrink: 1, color: colors.text, fontSize: 15, fontWeight: '800' },
   badges: { flexDirection: 'row', gap: 5 },
   stats: { color: colors.text, fontSize: 12, marginTop: 8, marginBottom: 2 },
 }));

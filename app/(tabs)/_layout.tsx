@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, Tabs } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ColorValue, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { youtubeImportAPI, youtubeImportKeys } from '@/api/youtubeImport';
 import { useAuth } from '@/auth/AuthProvider';
 import { PressableScale } from '@/components/PressableScale';
 import { SwipeSheet } from '@/components/SwipeSheet';
@@ -28,6 +30,9 @@ export default function TabLayout() {
   const { t } = useI18n();
   const { status } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
+  // Admins can turn YouTube import off for everyone or per user, so ask each
+  // time the Create sheet opens.
+  const youtubeImport = useQuery({ queryKey: youtubeImportKeys.access, queryFn: youtubeImportAPI.access, enabled: createOpen && status === 'signedIn', staleTime: 0 });
   const bottomInset = tabBarBottomInset(insets.bottom);
 
   const openCreate = () => {
@@ -68,6 +73,7 @@ export default function TabLayout() {
     </Tabs>
     <SwipeSheet visible={createOpen} title={t('Create')} onClose={() => setCreateOpen(false)}>
       <CreateChoice icon="cloud-upload-outline" title={t('Upload a video')} subtitle={t('Publish from your phone')} onPress={() => { setCreateOpen(false); router.push('/upload'); }} />
+      {youtubeImport.data?.available && <CreateChoice icon="logo-youtube" title={t('Import from YouTube')} subtitle={t('Bring a video over from YouTube')} onPress={() => { setCreateOpen(false); router.push('/import-youtube'); }} />}
       <CreateChoice icon="radio-outline" title={t('Go live')} subtitle={t('Broadcast from your phone')} onPress={openLive} />
     </SwipeSheet>
   </>;

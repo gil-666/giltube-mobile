@@ -26,6 +26,7 @@ export interface AdminChannel {
   user_type: string;
   created_at: string;
   status: string;
+  verified?: boolean;
   video_count: number;
   total_views: number;
 }
@@ -102,6 +103,7 @@ export const peopleAPI = {
   channels: async () => (await adminRequest<AdminChannel[] | null>('/channels')) ?? [],
   channelVideos: async (channelID: string) => (await adminRequest<AdminVideo[] | null>(`/channels/${id(channelID)}/videos`)) ?? [],
   moderateChannel: (channelID: string, action: ModerationAction) => adminJSON<{ status: string }>('POST', `/channels/${id(channelID)}/${action}`),
+  setChannelVerified: (channelID: string, verified: boolean) => adminJSON<{ id: string; verified: boolean }>('PUT', `/channels/${id(channelID)}/verified`, { verified }),
 
   videos: async (query: string, limit: number) => {
     const params = new URLSearchParams({ limit: String(limit) });

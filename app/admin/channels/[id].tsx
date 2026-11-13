@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { peopleAPI, peopleKeys } from '@/admin/people/api';
-import { ModerationButtons, SearchField, StatusBadge, VideoListRow, useModeration } from '@/admin/people/shared';
+import { ModerationButtons, SearchField, StatusBadge, VerifyChannelButton, VideoListRow, useModeration } from '@/admin/people/shared';
 import { AdminBadge, AdminButton, AdminButtons, AdminCard, AdminEmpty, AdminError, AdminLoading, AdminScreen, AdminSection, useAdminStyles, useIsAdmin } from '@/admin/ui';
 import { useI18n } from '@/i18n';
 
@@ -39,12 +39,14 @@ export default function AdminChannelDetailScreen() {
     {channel && <AdminCard style={styles.card}>
       <View style={adminStyles.inlineRow}>
         <StatusBadge status={channel.status} />
+        {channel.verified && <AdminBadge label={t('Verified')} tone="info" />}
         {channel.user_type === 'admin' && <AdminBadge label={t('Owned by an admin')} tone="info" />}
       </View>
       <Text style={[adminStyles.text, styles.stats]}>{t('{videos} videos · {views} views', { videos: channel.video_count, views: compactNumber(channel.total_views) })}</Text>
       {!!channel.created_at && <Text style={adminStyles.muted}>{t('Created {date}', { date: dateTime(channel.created_at, { dateStyle: 'medium' }) })}</Text>}
       <Text selectable style={[adminStyles.mono, styles.id]}>{channel.id}</Text>
       <AdminButtons>
+        <VerifyChannelButton id={channel.id} name={channel.name} verified={channel.verified} />
         <ModerationButtons kind="channel" id={channel.id} name={channel.name} status={channel.status} isProtected={channel.user_type === 'admin'} moderation={moderation} />
         <AdminButton compact icon="open-outline" label={t('Open channel')} onPress={() => router.push({ pathname: '/channel/[id]', params: { id: channel.id } })} />
       </AdminButtons>

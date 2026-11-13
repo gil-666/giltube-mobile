@@ -29,6 +29,7 @@ const groups: { title: string; tools: Tool[] }[] = [
     { href: '/admin/transcode-jobs', icon: 'construct-outline', title: 'Transcode jobs', subtitle: 'Queue, progress and retries' },
     { href: '/admin/workers', icon: 'hardware-chip-outline', title: 'Workers', subtitle: 'Remote encoders and enrollment' },
     { href: '/admin/youtube-mirrors', icon: 'logo-youtube', title: 'YouTube mirrors', subtitle: 'Mirrored channels and imports' },
+    { href: '/admin/youtube-import', icon: 'cloud-download-outline', title: 'Public YouTube import', subtitle: 'Who can import, limits and recent imports' },
   ] },
   { title: 'Home & playback', tools: [
     { href: '/admin/featured', icon: 'star-outline', title: 'Featured', subtitle: 'Home banner content' },

@@ -152,3 +152,25 @@ const useStyles = makeStyles(() => ({
   searchInput: { flex: 1, color: colors.text, fontSize: 14, paddingVertical: 10 },
   thumbEmpty: { alignItems: 'center', justifyContent: 'center' },
 }));
+
+// Gives or removes a channel's verified check (shown next to its name across GilTube).
+export function VerifyChannelButton({ id, name, verified }: { id: string; name: string; verified?: boolean }) {
+  const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const apply = async (value: boolean) => {
+    setBusy(true);
+    try {
+      await peopleAPI.setChannelVerified(id, value);
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'people'] });
+    } catch (error) {
+      alertError(t)(error);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (verified) {
+    return <AdminButton compact icon="close-circle-outline" label={t('Remove check')} busy={busy} onPress={() => confirmAction(t, t('Remove verified check?'), t('Remove the verified check from "{name}"?', { name }), () => apply(false), 'Remove')} />;
+  }
+  return <AdminButton compact icon="checkmark-circle-outline" label={t('Verify')} busy={busy} onPress={() => void apply(true)} />;
+}
