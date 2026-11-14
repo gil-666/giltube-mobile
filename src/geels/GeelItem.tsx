@@ -7,10 +7,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  cancelAnimation, Easing, runOnJS, type SharedValue, useAnimatedStyle, useSharedValue,
+  cancelAnimation, Easing, FadeIn, runOnJS, type SharedValue, useAnimatedStyle, useSharedValue,
   withDelay, withRepeat, withSequence, withSpring, withTiming,
 } from 'react-native-reanimated';
 
@@ -20,6 +20,8 @@ import { VerifiedBadge } from '@/components/VerifiedBadge';
 import { useI18n } from '@/i18n';
 import { colors, makeStyles } from '@/theme/tokens';
 import { compactNumber, resolveMediaURL } from '@/utils/media';
+
+type GeelPlayState = 'playing' | 'paused' | 'loading';
 
 const HEART = 'heart';
 let burstSeq = 0;
@@ -32,7 +34,7 @@ interface PlayerHandle { toggle: () => void; seekTo: (ratio: number) => void }
 
 const GeelPlayerLayer = forwardRef<PlayerHandle, {
   geel: Geel; current: boolean; suspended: boolean; muted: boolean; progress: SharedValue<number>; subtitleBottomPadding: number;
-  onPlayingChange: (playing: boolean) => void; onWatched: (ratio: number) => void;
+  onPlayingChange: (state: GeelPlayState) => void; onWatched: (ratio: number) => void;
 }>(function GeelPlayerLayer({ geel, current, suspended, muted, progress, subtitleBottomPadding, onPlayingChange, onWatched }, ref) {
   const player = useVideoPlayer({ uri: resolveMediaURL(geel.hls_path) }, (instance) => {
     instance.loop = true;
@@ -68,7 +70,8 @@ const GeelPlayerLayer = forwardRef<PlayerHandle, {
       player.play();
     }
   }, [current, onWatched, player, suspended]);
-  useEffect(() => { onPlayingChange(playing.isPlaying); }, [onPlayingChange, playing.isPlaying]);
+  // Not playing and not paused by the viewer means it is loading or buffering.
+  useEffect(() => { onPlayingChange(playing.isPlaying ? 'playing' : userPaused.current ? 'paused' : 'loading'); }, [onPlayingChange, playing.isPlaying]);
   useEffect(() => {
     const duration = player.duration;
     if (duration > 0) {
@@ -89,10 +92,10 @@ const GeelPlayerLayer = forwardRef<PlayerHandle, {
 
   useImperativeHandle(ref, () => ({
     toggle: () => {
-      if (player.playing) { userPaused.current = true; player.pause(); } else { userPaused.current = false; player.play(); }
+      if (player.playing) { userPaused.current = true; player.pause(); onPlayingChange('paused'); } else { userPaused.current = false; player.play(); onPlayingChange('loading'); }
     },
     seekTo: (ratio: number) => { if (player.duration > 0) player.currentTime = Math.max(0, Math.min(ratio, 1)) * player.duration; },
-  }), [player]);
+  }), [onPlayingChange, player]);
 
   return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} fullscreenOptions={{ enable: false }} surfaceType="textureView" subtitleBottomPadding={subtitleBottomPadding} />;
 });
@@ -199,7 +202,8 @@ export const GeelItem = memo(function GeelItem({
   // State, not a ref: gesture callbacks read it.
   const [playerHandle, setPlayerHandle] = useState<PlayerHandle | null>(null);
   const progress = useSharedValue(0);
-  const [playing, setPlaying] = useState(false);
+  const [playState, setPlayState] = useState<GeelPlayState>('loading');
+  const playing = playState === 'playing';
   const [bursts, setBursts] = useState<{ id: number; x: number; y: number; tilt: number }[]>([]);
   const [captionOpen, setCaptionOpen] = useState(false);
   const [barWidth, setBarWidth] = useState(1);
@@ -289,10 +293,10 @@ export const GeelItem = memo(function GeelItem({
     <GestureDetector gesture={tapGesture}>
       <View style={StyleSheet.absoluteFill} collapsable={false}>
         <Image source={resolveMediaURL(geel.poster_url || geel.thumbnail_url)} style={StyleSheet.absoluteFill} contentFit="cover" />
-        {nearby && <GeelPlayerLayer ref={setPlayerHandle} geel={geel} current={current} suspended={suspended} muted={muted} progress={progress} subtitleBottomPadding={Math.min(0.5, (bottomInset + 150) / Math.max(height, 1))} onPlayingChange={setPlaying} onWatched={markWatched} />}
-        <View pointerEvents="none" style={s.shadeTop} />
+        {nearby && <GeelPlayerLayer ref={setPlayerHandle} geel={geel} current={current} suspended={suspended} muted={muted} progress={progress} subtitleBottomPadding={Math.min(0.5, (bottomInset + 150) / Math.max(height, 1))} onPlayingChange={setPlayState} onWatched={markWatched} />}
         <LinearGradient pointerEvents="none" colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.72)']} style={s.shadeBottom} />
-        {current && !suspended && !playing && nearby && <View pointerEvents="none" style={s.pausedIcon}><Ionicons name="play" size={44} color={colors.white} /></View>}
+        {current && !suspended && nearby && playState === 'paused' && <View pointerEvents="none" style={s.pausedIcon}><Ionicons name="play" size={44} color={colors.white} /></View>}
+        {current && !suspended && nearby && playState === 'loading' && <Animated.View entering={FadeIn.delay(250).duration(150)} pointerEvents="none" style={s.loading}><ActivityIndicator size="large" color={colors.white} /></Animated.View>}
         {bursts.map((burst) => <HeartBurst key={burst.id} x={burst.x} y={burst.y} tilt={burst.tilt} onDone={() => removeBurst(burst.id)} />)}
       </View>
     </GestureDetector>
@@ -360,8 +364,8 @@ const styles = StyleSheet.create({
 
 const useStylesheet = makeStyles(() => ({
   item: { width: '100%', backgroundColor: '#000', overflow: 'hidden' },
-  shadeTop: { position: 'absolute', top: 0, left: 0, right: 0, height: 120, backgroundColor: 'rgba(0,0,0,0.18)' },
   shadeBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '42%' },
+  loading: { position: 'absolute', top: '50%', left: '50%', width: 64, height: 64, marginLeft: -32, marginTop: -32, alignItems: 'center', justifyContent: 'center' },
   pausedIcon: { position: 'absolute', top: '50%', left: '50%', width: 80, height: 80, marginLeft: -40, marginTop: -40, borderRadius: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' },
   mute: { position: 'absolute', top: 54, right: 14, width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.35)' },
   rail: { position: 'absolute', right: 8, alignItems: 'center', gap: 12 },

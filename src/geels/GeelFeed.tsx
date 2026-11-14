@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type Ref, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, FlatList, Text, View, type ViewToken } from 'react-native';
 
 import { geelsAPI, type Geel } from '@/api/geels';
@@ -14,7 +14,12 @@ import { colors, makeStyles } from '@/theme/tokens';
 import { GeelComments } from './GeelComments';
 import { GeelItem } from './GeelItem';
 
-export function GeelFeed({ startId, channel, sound, openComments = false, bottomInset = 0 }: { startId?: string; channel?: string; sound?: string; openComments?: boolean; bottomInset?: number }) {
+export interface GeelFeedHandle {
+  /** Back to the top with a freshly ranked feed (Geels tab tapped again). */
+  refresh: () => void;
+}
+
+export function GeelFeed({ ref, startId, channel, sound, openComments = false, bottomInset = 0 }: { ref?: Ref<GeelFeedHandle>; startId?: string; channel?: string; sound?: string; openComments?: boolean; bottomInset?: number }) {
   const styles = useStyles();
   const { t } = useI18n();
   const { account, status } = useAuth();
@@ -33,6 +38,7 @@ export function GeelFeed({ startId, channel, sound, openComments = false, bottom
   const [failed, setFailed] = useState(false);
   const [commentsGeel, setCommentsGeel] = useState<Geel | null>(null);
   const loadingRef = useRef(false);
+  const listRef = useRef<FlatList<Geel>>(null);
   const itemsRef = useRef<Geel[]>([]);
   useEffect(() => { itemsRef.current = items; }, [items]);
 
@@ -88,6 +94,19 @@ export function GeelFeed({ startId, channel, sound, openComments = false, bottom
     if (first?.index != null) setActiveIndex(first.index);
   });
 
+  useImperativeHandle(ref, () => ({
+    refresh: () => {
+      if (loadingRef.current) return;
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      setCommentsGeel(null);
+      setActiveIndex(0);
+      itemsRef.current = [];
+      setItems([]);
+      setHasMore(true);
+      void loadMore(true);
+    },
+  }), [loadMore]);
+
   useEffect(() => {
     if (hasMore && activeIndex >= items.length - 3) void loadMore();
   }, [activeIndex, hasMore, items.length, loadMore]);
@@ -102,6 +121,7 @@ export function GeelFeed({ startId, channel, sound, openComments = false, bottom
   return <View style={styles.screen} onLayout={(event) => setHeight(Math.round(event.nativeEvent.layout.height))}>
     <StatusBar style="light" />
     {height > 0 && <FlatList
+      ref={listRef}
       data={items}
       keyExtractor={(geel) => geel.id}
       renderItem={({ item, index }) => <GeelItem
