@@ -44,20 +44,24 @@ export default function TabLayout() {
     router.push('/go-live');
   };
 
+  const baseTabBar = {
+    position: 'absolute' as const,
+    height: tabBarHeight(bottomInset),
+    paddingTop: 7,
+    paddingBottom: bottomInset,
+    borderTopColor: colors.border,
+    backgroundColor: colors.canvas,
+  };
+  // Geels play edge to edge: the bar turns black so it reads as part of the video.
+  const geelsTabBar = { ...baseTabBar, backgroundColor: '#000', borderTopColor: 'rgba(255,255,255,0.08)' };
+
   return <>
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.text,
         tabBarInactiveTintColor: colors.textDim,
-        tabBarStyle: {
-          position: 'absolute',
-          height: tabBarHeight(bottomInset),
-          paddingTop: 7,
-          paddingBottom: bottomInset,
-          borderTopColor: colors.border,
-          backgroundColor: colors.canvas,
-        },
+        tabBarStyle: baseTabBar,
         tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
         sceneStyle: { backgroundColor: colors.screen },
       }}
@@ -65,9 +69,11 @@ export default function TabLayout() {
       <Tabs.Screen name="index" options={{ title: t('Home'), tabBarIcon: icon('home') }} />
       {/* Off the bar so Create stays centred; opened from the You tab. */}
       <Tabs.Screen name="subscriptions" options={{ href: null, title: t('Subs') }} />
-      <Tabs.Screen name="music" options={{ title: t('Music'), tabBarIcon: icon('musical-notes') }} />
+      <Tabs.Screen name="geels" options={{ title: t('Geels'), tabBarIcon: icon('phone-portrait'), tabBarStyle: geelsTabBar }} />
       <Tabs.Screen name="create" listeners={{ tabPress: (event) => { event.preventDefault(); openCreate(); } }} options={{ title: t('Create'), tabBarIcon: CreateIcon, tabBarLabelStyle: styles.createLabel }} />
-      <Tabs.Screen name="library" options={{ title: t('Library'), tabBarIcon: icon('play-circle') }} />
+      <Tabs.Screen name="music" options={{ title: t('Music'), tabBarIcon: icon('musical-notes') }} />
+      {/* Off the bar (reached from You > Playlists and downloads) so Geels fits. */}
+      <Tabs.Screen name="library" options={{ href: null, title: t('Library') }} />
       <Tabs.Screen name="profile" options={{ title: t('You'), tabBarIcon: icon('person-circle') }} />
       <Tabs.Screen name="search" options={{ href: null }} />
     </Tabs>

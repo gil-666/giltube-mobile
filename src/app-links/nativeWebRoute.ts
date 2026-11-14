@@ -4,6 +4,7 @@ const nativeStaticPaths = new Set([
   '/channels',
   '/create-channel',
   '/dashboard',
+  '/geels',
   '/go-live',
   '/login',
   '/movies',
@@ -27,6 +28,8 @@ const nativeStaticPaths = new Set([
 const nativeDynamicPaths = [
   /^\/category\/[^/]+$/,
   /^\/channel\/[^/]+$/,
+  /^\/geels\/[^/]+$/,
+  /^\/geels\/sound\/[^/]+$/,
   /^\/live\/[^/]+$/,
   /^\/movies\/[^/]+$/,
   /^\/music\/artists\/[^/]+$/,

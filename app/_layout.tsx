@@ -123,6 +123,8 @@ function ThemedNavigator() {
         <Stack.Screen name="music/library" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="music/player" options={{ animation: 'slide_from_bottom', gestureEnabled: true }} />
         <Stack.Screen name="auth/callback" options={{ animation: 'none' }} />
+        <Stack.Screen name="geels/[id]" options={{ animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="geels/sound/[id]" options={{ animation: 'slide_from_right' }} />
       </Stack>
     </View>
   );
