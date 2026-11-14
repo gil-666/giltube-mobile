@@ -22,7 +22,7 @@ import { AppSettingsProvider } from '@/settings/AppSettingsProvider';
 import { ThemeBackdrop } from '@/theme/ThemeBackdrop';
 import { ThemeProvider, useSiteTheme } from '@/theme/ThemeProvider';
 import { colors, useThemeVersion } from '@/theme/tokens';
-import { OTAUpdateBanner } from '@/updates/OTAUpdateBanner';
+import { SilentOTAUpdates } from '@/updates/SilentOTAUpdates';
 import { PlayStoreUpdatePrompt } from '@/updates/PlayStoreUpdatePrompt';
 
 const queryClient = new QueryClient({
@@ -48,7 +48,7 @@ export default function RootLayout() {
                 <PlayStoreUpdatePrompt />
                 <ThemedNavigator />
                 <StartupNewsPanel />
-                <OTAUpdateBanner />
+                <SilentOTAUpdates />
               </MusicPlayerProvider></MusicDownloadsProvider></PlayerProvider>
             </DownloadProvider></NotificationProvider></ChannelProvider></AppSettingsProvider>
           </ThemeProvider></AuthProvider>
@@ -123,6 +123,7 @@ function ThemedNavigator() {
         <Stack.Screen name="music/library" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="music/player" options={{ animation: 'slide_from_bottom', gestureEnabled: true }} />
         <Stack.Screen name="auth/callback" options={{ animation: 'none' }} />
+        <Stack.Screen name="geels/create" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
         <Stack.Screen name="geels/[id]" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="geels/sound/[id]" options={{ animation: 'slide_from_right' }} />
       </Stack>

@@ -7,6 +7,7 @@ import { ActivityIndicator, Alert, KeyboardAvoidingView, Pressable, ScrollView, 
 
 import type { Geel } from '@/api/geels';
 import { giltubeAPI } from '@/api/giltube';
+import { GiphyPicker } from '@/components/GiphyPicker';
 import { SwipeSheet } from '@/components/SwipeSheet';
 import { useI18n } from '@/i18n';
 import { colors, makeStyles } from '@/theme/tokens';
@@ -21,6 +22,7 @@ export function GeelComments({ geel, actorID, signedIn, onClose, onCommented }: 
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [posting, setPosting] = useState(false);
+  const [gifOpen, setGIFOpen] = useState(false);
   const comments = useQuery({
     queryKey: ['comments', geel?.id, actorID],
     queryFn: () => giltubeAPI.comments(geel!.id, actorID),
@@ -60,7 +62,7 @@ export function GeelComments({ geel, actorID, signedIn, onClose, onCommented }: 
     <Image source={resolveMediaURL(comment.channel.avatar_url || '')} style={reply ? styles.replyAvatar : styles.avatar} contentFit="cover" />
     <View style={styles.body}>
       <Text style={styles.author}>{comment.channel.name}</Text>
-      <Text style={styles.text}>{comment.text}</Text>
+      <CommentBody text={comment.text} />
       {!reply && <Pressable onPress={() => setReplyTo(replyTo?.id === comment.id ? null : comment)} hitSlop={6}><Text style={styles.replyAction}>{t(replyTo?.id === comment.id ? 'Cancel' : 'Reply')}</Text></Pressable>}
       {comment.replies?.map((child) => row(child, true))}
     </View>
@@ -89,12 +91,27 @@ export function GeelComments({ geel, actorID, signedIn, onClose, onCommented }: 
           onSubmitEditing={() => void submit()}
           returnKeyType="send"
         />
+        <Pressable accessibilityLabel={t('Add a GIF')} onPress={() => setGIFOpen(true)} style={styles.gifButton} hitSlop={6}><Text style={styles.gifButtonText}>GIF</Text></Pressable>
         <Pressable disabled={!text.trim() || posting} onPress={() => void submit()} style={[styles.send, (!text.trim() || posting) && styles.sendDisabled]}>
           <Ionicons name="arrow-up" size={20} color={colors.onAccent} />
         </Pressable>
       </View>
     </KeyboardAvoidingView>
+    <GiphyPicker visible={gifOpen} onClose={() => setGIFOpen(false)} onSelect={(url) => { setText((current) => current.trim() ? `${current}\n${url}` : url); setGIFOpen(false); }} />
   </SwipeSheet>;
+}
+
+// GIF links (Giphy or any .gif) show as images, as on the watch screen.
+const isGIF = (word: string) => /^https?:\/\//i.test(word) && (/(?:^|\.)giphy\.com\//i.test(word) || /\.gif(?:\?|$)/i.test(word));
+function CommentBody({ text }: { text: string }) {
+  const styles = useStyles();
+  const words = text.split(/\s+/);
+  const gifs = words.filter(isGIF);
+  const plain = words.filter((word) => !isGIF(word)).join(' ').trim();
+  return <View>
+    {!!plain && <Text style={styles.text}>{plain}</Text>}
+    {gifs.map((url) => <Image key={url} source={url} style={styles.gif} contentFit="cover" autoplay />)}
+  </View>;
 }
 
 const useStyles = makeStyles(() => ({
@@ -109,6 +126,9 @@ const useStyles = makeStyles(() => ({
   body: { flex: 1, minWidth: 0 },
   author: { color: colors.textMuted, fontSize: 12, fontWeight: '800' },
   text: { color: colors.text, fontSize: 14, lineHeight: 19, marginTop: 2 },
+  gif: { width: 200, height: 140, borderRadius: 10, marginTop: 6, backgroundColor: colors.surfaceStrong },
+  gifButton: { height: 44, paddingHorizontal: 12, borderRadius: 22, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+  gifButtonText: { color: colors.textMuted, fontSize: 12, fontWeight: '900' },
   replyAction: { color: colors.textMuted, fontSize: 12, fontWeight: '700', marginTop: 5 },
   likeButton: { alignItems: 'center', paddingTop: 4, minWidth: 28 },
   likeCount: { color: colors.textMuted, fontSize: 11, marginTop: 1 },

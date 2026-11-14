@@ -1,3 +1,81 @@
+diff --git a/node_modules/expo-video/android/src/main/java/expo/modules/video/VideoModule.kt b/node_modules/expo-video/android/src/main/java/expo/modules/video/VideoModule.kt
+index 65f16a5..2ef2b8b 100644
+--- a/node_modules/expo-video/android/src/main/java/expo/modules/video/VideoModule.kt
++++ b/node_modules/expo-video/android/src/main/java/expo/modules/video/VideoModule.kt
+@@ -400,6 +400,9 @@ private inline fun <reified T : VideoView> ViewDefinitionBuilder<T>.VideoViewCom
+   Prop("contentFit") { view: T, contentFit: ContentFit ->
+     view.contentFit = contentFit
+   }
++  Prop("subtitleBottomPadding") { view: T, fraction: Float? ->
++    view.subtitleBottomPadding = (fraction ?: expo.modules.video.utils.SubtitleUtils.DEFAULT_BOTTOM_PADDING_FRACTION).coerceIn(0f, 0.6f)
++  }
+   Prop("startsPictureInPictureAutomatically") { view: T, autoEnterPiP: Boolean? ->
+     view.autoEnterPiP = autoEnterPiP ?: false
+   }
+diff --git a/node_modules/expo-video/android/src/main/java/expo/modules/video/VideoView.kt b/node_modules/expo-video/android/src/main/java/expo/modules/video/VideoView.kt
+index 58c8b10..9df9521 100644
+--- a/node_modules/expo-video/android/src/main/java/expo/modules/video/VideoView.kt
++++ b/node_modules/expo-video/android/src/main/java/expo/modules/video/VideoView.kt
+@@ -87,7 +87,7 @@ open class VideoView(context: Context, appContext: AppContext, useTextureView: B
+   private val windowFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
+     if (hasFocus) {
+       // Reconfigure when window gains focus (returning from settings)
+-      SubtitleUtils.configureSubtitleView(playerView, context)
++      SubtitleUtils.configureSubtitleView(playerView, context, subtitleBottomPadding)
+     }
+   }
+ 
+@@ -116,6 +116,14 @@ open class VideoView(context: Context, appContext: AppContext, useTextureView: B
+     pipParams = pipParams.copy(autoEnter = new)
+   }
+ 
++  // Fraction of the view's height kept clear below captions (GilTube: Geels
++  // lift them above the caption and creator overlay).
++  var subtitleBottomPadding: Float = SubtitleUtils.DEFAULT_BOTTOM_PADDING_FRACTION
++    set(value) {
++      field = value
++      SubtitleUtils.configureSubtitleView(playerView, context, value)
++    }
++
+   var contentFit: ContentFit = ContentFit.CONTAIN
+     set(value) {
+       playerView.resizeMode = value.toResizeMode()
+@@ -196,7 +204,7 @@ open class VideoView(context: Context, appContext: AppContext, useTextureView: B
+     this.playerView.videoSurfaceView?.alpha = 0f
+ 
+     // Configure subtitle view to fix sizing issues with embedded styles
+-    SubtitleUtils.configureSubtitleView(playerView, context)
++    SubtitleUtils.configureSubtitleView(playerView, context, subtitleBottomPadding)
+     addView(
+       playerView,
+       ViewGroup.LayoutParams(
+@@ -356,7 +364,7 @@ open class VideoView(context: Context, appContext: AppContext, useTextureView: B
+     // Set up listener for accessibility caption changes when attached to window
+     setupCaptioningChangeListener()
+     // Reconfigure when view is attached (handles returning from settings)
+-    SubtitleUtils.configureSubtitleView(playerView, context)
++    SubtitleUtils.configureSubtitleView(playerView, context, subtitleBottomPadding)
+ 
+     // Set up window focus change listener
+     decorView.onFocusChangeListener = windowFocusChangeListener
+@@ -368,7 +376,7 @@ open class VideoView(context: Context, appContext: AppContext, useTextureView: B
+     super.onVisibilityChanged(changedView, visibility)
+     if (visibility == View.VISIBLE) {
+       // Reconfigure subtitles when view becomes visible (immediate response)
+-      SubtitleUtils.configureSubtitleView(playerView, context)
++      SubtitleUtils.configureSubtitleView(playerView, context, subtitleBottomPadding)
+     }
+   }
+ 
+@@ -427,7 +435,7 @@ open class VideoView(context: Context, appContext: AppContext, useTextureView: B
+   private fun setupCaptioningChangeListener() {
+     val captioningManager = context.getSystemService(Context.CAPTIONING_SERVICE) as? CaptioningManager
+ 
+-    captioningChangeListener = SubtitleUtils.createCaptioningChangeListener(playerView, context)
++    captioningChangeListener = SubtitleUtils.createCaptioningChangeListener(playerView, context) { subtitleBottomPadding }
+ 
+     captioningChangeListener?.let { listener ->
+       captioningManager?.addCaptioningChangeListener(listener)
 diff --git a/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayerAudioTracks.kt b/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayerAudioTracks.kt
 index fbccab6..54b2ed7 100644
 --- a/node_modules/expo-video/android/src/main/java/expo/modules/video/player/VideoPlayerAudioTracks.kt
@@ -37,15 +115,79 @@ index cbe1e59..3b153cc 100644
    }
  }
 diff --git a/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt b/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt
-index 52bdcd8..3f830be 100644
+index 52bdcd8..98083fa 100644
 --- a/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt
 +++ b/node_modules/expo-video/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt
-@@ -16,6 +16,8 @@ object SubtitleUtils {
+@@ -12,10 +12,14 @@ object SubtitleUtils {
+    * Disables embedded HLS subtitle styling and applies Android accessibility settings
+    * with a reasonable base font size.
+    */
+-  fun configureSubtitleView(playerView: PlayerView, context: Context) {
++  const val DEFAULT_BOTTOM_PADDING_FRACTION = 0.14f
++
++  fun configureSubtitleView(playerView: PlayerView, context: Context, bottomPaddingFraction: Float = DEFAULT_BOTTOM_PADDING_FRACTION) {
      playerView.subtitleView?.apply {
        setApplyEmbeddedStyles(false)
        setApplyEmbeddedFontSizes(false)
 +      // Keep captions clear of the seek bar, gesture area, and display edge.
-+      setBottomPaddingFraction(0.14f)
++      setBottomPaddingFraction(bottomPaddingFraction)
  
        // Apply system accessibility caption style but with reasonable base font size
        val captioningManager = context.getSystemService(Context.CAPTIONING_SERVICE) as? CaptioningManager
+@@ -38,19 +42,20 @@ object SubtitleUtils {
+    */
+   fun createCaptioningChangeListener(
+     playerView: PlayerView,
+-    context: Context
++    context: Context,
++    bottomPaddingFraction: () -> Float = { DEFAULT_BOTTOM_PADDING_FRACTION }
+   ): CaptioningManager.CaptioningChangeListener {
+     return object : CaptioningManager.CaptioningChangeListener() {
+       override fun onEnabledChanged(enabled: Boolean) {
+-        configureSubtitleView(playerView, context)
++        configureSubtitleView(playerView, context, bottomPaddingFraction())
+       }
+ 
+       override fun onUserStyleChanged(userStyle: android.view.accessibility.CaptioningManager.CaptionStyle) {
+-        configureSubtitleView(playerView, context)
++        configureSubtitleView(playerView, context, bottomPaddingFraction())
+       }
+ 
+       override fun onFontScaleChanged(fontScale: Float) {
+-        configureSubtitleView(playerView, context)
++        configureSubtitleView(playerView, context, bottomPaddingFraction())
+       }
+     }
+   }
+diff --git a/node_modules/expo-video/build/VideoView.types.d.ts b/node_modules/expo-video/build/VideoView.types.d.ts
+index 1e9cdeb..732e70d 100644
+--- a/node_modules/expo-video/build/VideoView.types.d.ts
++++ b/node_modules/expo-video/build/VideoView.types.d.ts
+@@ -17,6 +17,11 @@ export type VideoContentFit = 'contain' | 'cover' | 'fill';
+  */
+ export type SurfaceType = 'textureView' | 'surfaceView';
+ export interface VideoViewProps extends ViewProps {
++    /**
++     * Fraction of the view's height kept clear below subtitles (0-0.6). Defaults to 0.14.
++     * @platform android
++     */
++    subtitleBottomPadding?: number;
+     /**
+      * A video player instance. Use [`useVideoPlayer()`](#usevideoplayersource-setup) hook to create one.
+      */
+diff --git a/node_modules/expo-video/src/VideoView.types.ts b/node_modules/expo-video/src/VideoView.types.ts
+index 665adef..65175bd 100644
+--- a/node_modules/expo-video/src/VideoView.types.ts
++++ b/node_modules/expo-video/src/VideoView.types.ts
+@@ -21,6 +21,11 @@ export type VideoContentFit = 'contain' | 'cover' | 'fill';
+ export type SurfaceType = 'textureView' | 'surfaceView';
+ 
+ export interface VideoViewProps extends ViewProps {
++  /**
++   * Fraction of the view's height kept clear below subtitles (0-0.6). Defaults to 0.14.
++   * @platform android
++   */
++  subtitleBottomPadding?: number;
+   /**
+    * A video player instance. Use [`useVideoPlayer()`](#usevideoplayersource-setup) hook to create one.
+    */

@@ -49,11 +49,14 @@ export default function GeelSoundScreen() {
             <Text numberOfLines={2} style={styles.title}>{info.title}</Text>
             <Text style={styles.artist}>{info.artist_name}</Text>
             <Text style={styles.usage}>{compactNumber(info.usage_count || 0)} {t((info.usage_count || 0) === 1 ? 'Geel' : 'Geels')}</Text>
+            {sound.data?.usable && <Pressable onPress={() => router.push({ pathname: '/geels/create', params: { sound: info.track_id } })} style={styles.useSound}>
+              <Ionicons name="add" size={18} color={colors.onAccent} /><Text style={styles.useSoundText}>{t('Use this sound')}</Text>
+            </Pressable>}
           </View>
         </> : <Text style={styles.usage}>{t('This sound isn’t available.')}</Text>}
       </View>}
       renderItem={({ item }) => <Pressable onPress={() => router.push({ pathname: '/geels/[id]', params: { id: item.id, sound: id } })} style={{ width: tile, height: Math.round(tile * 16 / 9) }}>
-        <Image source={resolveMediaURL(item.thumbnail_url)} style={styles.tileImage} contentFit="cover" />
+        <Image source={resolveMediaURL(item.poster_url || item.thumbnail_url)} style={styles.tileImage} contentFit="cover" />
         <View style={styles.tileViews}><Ionicons name="play" size={12} color="#fff" /><Text style={styles.tileViewsText}>{compactNumber(item.views)}</Text></View>
       </Pressable>}
     />
@@ -74,6 +77,8 @@ const useStyles = makeStyles(() => ({
   title: { color: colors.text, fontSize: 22, fontWeight: '900', marginTop: 2 },
   artist: { color: colors.textMuted, fontSize: 14, fontWeight: '700', marginTop: 2 },
   usage: { color: colors.textDim, fontSize: 13, marginTop: 6 },
+  useSound: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 10, paddingHorizontal: 14, height: 36, borderRadius: 18, backgroundColor: colors.accent },
+  useSoundText: { color: colors.onAccent, fontSize: 13, fontWeight: '900' },
   tileImage: { width: '100%', height: '100%', backgroundColor: colors.surface },
   tileViews: { position: 'absolute', left: 6, bottom: 5, flexDirection: 'row', alignItems: 'center', gap: 3 },
   tileViewsText: { color: '#fff', fontSize: 12, fontWeight: '800', textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 3 },

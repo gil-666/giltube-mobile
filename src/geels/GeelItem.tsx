@@ -31,9 +31,9 @@ interface PlayerHandle { toggle: () => void; seekTo: (ratio: number) => void }
 // most three players exist at once.
 
 const GeelPlayerLayer = forwardRef<PlayerHandle, {
-  geel: Geel; current: boolean; suspended: boolean; muted: boolean; progress: SharedValue<number>;
+  geel: Geel; current: boolean; suspended: boolean; muted: boolean; progress: SharedValue<number>; subtitleBottomPadding: number;
   onPlayingChange: (playing: boolean) => void; onWatched: (ratio: number) => void;
-}>(function GeelPlayerLayer({ geel, current, suspended, muted, progress, onPlayingChange, onWatched }, ref) {
+}>(function GeelPlayerLayer({ geel, current, suspended, muted, progress, subtitleBottomPadding, onPlayingChange, onWatched }, ref) {
   const player = useVideoPlayer({ uri: resolveMediaURL(geel.hls_path) }, (instance) => {
     instance.loop = true;
     instance.timeUpdateEventInterval = 0.25;
@@ -94,7 +94,7 @@ const GeelPlayerLayer = forwardRef<PlayerHandle, {
     seekTo: (ratio: number) => { if (player.duration > 0) player.currentTime = Math.max(0, Math.min(ratio, 1)) * player.duration; },
   }), [player]);
 
-  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} fullscreenOptions={{ enable: false }} surfaceType="textureView" />;
+  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} fullscreenOptions={{ enable: false }} surfaceType="textureView" subtitleBottomPadding={subtitleBottomPadding} />;
 });
 
 // ---------------------------------------------------------------------------
@@ -288,8 +288,8 @@ export const GeelItem = memo(function GeelItem({
   return <View style={[s.item, { height }]}>
     <GestureDetector gesture={tapGesture}>
       <View style={StyleSheet.absoluteFill} collapsable={false}>
-        <Image source={resolveMediaURL(geel.thumbnail_url)} style={StyleSheet.absoluteFill} contentFit="cover" />
-        {nearby && <GeelPlayerLayer ref={setPlayerHandle} geel={geel} current={current} suspended={suspended} muted={muted} progress={progress} onPlayingChange={setPlaying} onWatched={markWatched} />}
+        <Image source={resolveMediaURL(geel.poster_url || geel.thumbnail_url)} style={StyleSheet.absoluteFill} contentFit="cover" />
+        {nearby && <GeelPlayerLayer ref={setPlayerHandle} geel={geel} current={current} suspended={suspended} muted={muted} progress={progress} subtitleBottomPadding={Math.min(0.5, (bottomInset + 150) / Math.max(height, 1))} onPlayingChange={setPlaying} onWatched={markWatched} />}
         <View pointerEvents="none" style={s.shadeTop} />
         <LinearGradient pointerEvents="none" colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.72)']} style={s.shadeBottom} />
         {current && !suspended && !playing && nearby && <View pointerEvents="none" style={s.pausedIcon}><Ionicons name="play" size={44} color={colors.white} /></View>}

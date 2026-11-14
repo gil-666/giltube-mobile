@@ -2,7 +2,7 @@
 
 Native iOS and Android client for GilTube, built with React Native and Expo (SDK 57, React Native 0.86, New Architecture, Expo Router with typed routes, React Compiler).
 
-Current version: `0.9.49` (Android `versionCode` 63) in `package.json`, `app.json` and `android/app/build.gradle`.
+Current version: `0.9.50` (Android `versionCode` 64) in `package.json`, `app.json` and `android/app/build.gradle`.
 
 ## Features
 
@@ -101,7 +101,7 @@ Bump the version in `app.json` (`expo.version` and `android.versionCode`) before
 JavaScript and asset changes can ship without a Play release. Since 0.9.49 the app checks
 `https://giltube.gilservers.com/api/v1/mobile-updates/manifest` on every launch (and when it
 returns to the foreground after 30 minutes). It downloads updates in the background, then
-shows a "Restart" banner; an ignored update applies at the next launch. The backend serves
+applies it silently at the next cold start (or on returning after 30+ minutes away). The backend serves
 updates from `<data>/mobile-updates` (`internal/api/mobile_updates.go`).
 
 ```bash

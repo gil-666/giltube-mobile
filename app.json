@@ -2,7 +2,7 @@
   "expo": {
     "name": "GilTube",
     "slug": "giltube",
-    "version": "0.9.49",
+    "version": "0.9.50",
     "scheme": "giltube",
     "icon": "./assets/images/giltube-icon-safe.png",
     "orientation": "default",
@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.gilservers.giltube",
-      "versionCode": 63,
+      "versionCode": 64,
       "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./google-services.json",
       "intentFilters": [
@@ -39,6 +39,7 @@
             { "path": "/settings" },
             { "path": "/subscriptions" },
             { "path": "/upload" },
+            { "pathPrefix": "/geels" },
             { "pathPrefix": "/category/" },
             { "pathPrefix": "/channel" },
             { "pathPrefix": "/live" },
@@ -63,6 +64,7 @@
             { "path": "/es/settings" },
             { "path": "/es/subscriptions" },
             { "path": "/es/upload" },
+            { "pathPrefix": "/es/geels" },
             { "pathPrefix": "/es/category/" },
             { "pathPrefix": "/es/channel" },
             { "pathPrefix": "/es/live" },
@@ -97,6 +99,20 @@
         {
           "supportsBackgroundPlayback": true,
           "supportsPictureInPicture": true
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "GilTube uses the camera to record Geels and go live.",
+          "microphonePermission": "GilTube uses the microphone to record Geels and go live.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "GilTube opens your gallery so you can post a video as a Geel."
         }
       ],
       [

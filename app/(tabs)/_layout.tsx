@@ -78,6 +78,7 @@ export default function TabLayout() {
       <Tabs.Screen name="search" options={{ href: null }} />
     </Tabs>
     <SwipeSheet visible={createOpen} title={t('Create')} onClose={() => setCreateOpen(false)}>
+      <CreateChoice icon="phone-portrait-outline" title={t('Create a Geel')} subtitle={t('Record a short vertical video with music')} onPress={() => { setCreateOpen(false); router.push('/geels/create'); }} />
       <CreateChoice icon="cloud-upload-outline" title={t('Upload a video')} subtitle={t('Publish from your phone')} onPress={() => { setCreateOpen(false); router.push('/upload'); }} />
       {youtubeImport.data?.available && <CreateChoice icon="logo-youtube" title={t('Import from YouTube')} subtitle={t('Bring a video over from YouTube')} onPress={() => { setCreateOpen(false); router.push('/import-youtube'); }} />}
       <CreateChoice icon="radio-outline" title={t('Go live')} subtitle={t('Broadcast from your phone')} onPress={openLive} />
