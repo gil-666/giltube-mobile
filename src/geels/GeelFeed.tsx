@@ -14,7 +14,7 @@ import { colors, makeStyles } from '@/theme/tokens';
 import { GeelComments } from './GeelComments';
 import { GeelItem } from './GeelItem';
 
-export function GeelFeed({ startId, channel, sound, bottomInset = 0 }: { startId?: string; channel?: string; sound?: string; bottomInset?: number }) {
+export function GeelFeed({ startId, channel, sound, openComments = false, bottomInset = 0 }: { startId?: string; channel?: string; sound?: string; openComments?: boolean; bottomInset?: number }) {
   const styles = useStyles();
   const { t } = useI18n();
   const { account, status } = useAuth();
@@ -52,13 +52,15 @@ export function GeelFeed({ startId, channel, sound, bottomInset = 0 }: { startId
       setItems(next);
       setHasMore(page.has_more && page.items.length > 0);
       setFailed(false);
+      // Opened from a comment notification: show the start Geel's comments.
+      if (reset && openComments && next[0]?.id === startId) setCommentsGeel(next[0]);
     } catch {
       setFailed(true);
     } finally {
       loadingRef.current = false;
       setLoading(false);
     }
-  }, [actorID, channel, sound, startId]);
+  }, [actorID, channel, openComments, sound, startId]);
 
   useEffect(() => { void loadMore(true); }, [loadMore]);
 

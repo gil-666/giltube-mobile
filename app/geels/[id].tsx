@@ -11,9 +11,9 @@ import { useI18n } from '@/i18n';
 export default function GeelScreen() {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ id: string; channel?: string; sound?: string }>();
+  const params = useLocalSearchParams<{ id: string; channel?: string; sound?: string; comments?: string }>();
   return <View style={styles.screen}>
-    <GeelFeed startId={params.id} channel={params.channel} sound={params.sound} bottomInset={insets.bottom} />
+    <GeelFeed startId={params.id} channel={params.channel} sound={params.sound} openComments={params.comments === '1'} bottomInset={insets.bottom} />
     <Pressable accessibilityLabel={t('Back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/geels'))} style={[styles.back, { top: insets.top + 8 }]} hitSlop={8}>
       <Ionicons name="chevron-back" size={26} color="#fff" />
     </Pressable>

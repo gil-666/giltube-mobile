@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { useEvent, useEventListener } from 'expo';
-import { router, useFocusEffect, useIsFocused, useLocalSearchParams, useNavigation, usePathname } from 'expo-router';
+import { Redirect, router, useFocusEffect, useIsFocused, useLocalSearchParams, useNavigation, usePathname } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -46,7 +46,27 @@ import { WatchPartyChat, WatchPartyPanel } from '@/watch-parties/WatchPartyPanel
 // binge does not stop at every episode.
 const explicitAcceptedKeys = new Set<string>();
 
+// Vertical videos of 3 minutes or less play in the Geels UI. The watch screen
+// waits for the video's details (shared with the screen through the query
+// cache) before it starts playback, and sends Geels to /geels/<id> instead.
+// Watch parties, downloaded files and a video already in the player stay.
 export default function VideoScreen() {
+  const { id, comment = '', party = '' } = useLocalSearchParams<{ id: string; comment?: string; party?: string }>();
+  const { video: activeVideo } = usePlayer();
+  const opened = useMemo(() => peekOpenedVideo(id), [id]);
+  // Decided once, so a later change (another video playing) never unmounts the screen.
+  const [stays] = useState(() => !!party || !!opened?.sourceUri || activeVideo?.id === id);
+  const videoQuery = useQuery({ queryKey: ['video', id], queryFn: () => giltubeAPI.video(id), enabled: !!id && !stays, retry: 1 });
+  if (!stays) {
+    if (videoQuery.data?.geel || opened?.video?.geel) {
+      return <Redirect href={{ pathname: '/geels/[id]', params: comment ? { id, comments: '1' } : { id } }} />;
+    }
+    if (videoQuery.isPending) return <View style={{ flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#fff" /></View>;
+  }
+  return <VideoWatchScreen />;
+}
+
+function VideoWatchScreen() {
   const styles = useStyles();
   const { id, comment: focusedCommentID = '', party: partyID = '', skipIntro: skipIntroParam = '', startOver: startOverParam = '', t: startAtParam = '' } = useLocalSearchParams<{ id: string; comment?: string; party?: string; skipIntro?: string; startOver?: string; t?: string }>(); const pathname = usePathname(); const insets = useSafeAreaInsets(); const queryClient = useQueryClient();
   const { t, locale, compactNumber, number } = useI18n();

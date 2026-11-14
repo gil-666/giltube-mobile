@@ -806,4 +806,8 @@ export const esMX: Record<string, string> = {
   ,"Write a few words about your Geel.": "Escribe unas palabras sobre tu Geel."
   ,"You have an unfinished Geel.": "Tienes un Geel sin terminar."
   ,"Your Geel is on its way": "Tu Geel va en camino"
+  ,"Play back": "Reproducir"
+  ,"Pause": "Pausar"
+  ,"Playback": "Reproducción"
+  ,"Clip {current} of {total}": "Clip {current} de {total}"
 };

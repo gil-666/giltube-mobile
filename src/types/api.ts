@@ -34,6 +34,8 @@ export interface Video {
   progress?: number;
   width?: number;
   hidden?: boolean;
+  /** Plays in the Geels UI: the watch screen redirects there. */
+  geel?: boolean;
   clip?: { id: string; original_video_id: string; original_video_title?: string; start_seconds: number; end_seconds: number; clipped_by_username?: string; clipped_by_channel?: string };
 }
 

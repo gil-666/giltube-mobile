@@ -14,6 +14,7 @@ import type { GeelSound } from '@/api/geels';
 import { useI18n } from '@/i18n';
 import { colors, makeStyles } from '@/theme/tokens';
 import { resolveMediaURL } from '@/utils/media';
+import { ClipPlayback } from './ClipPlayback';
 import type { DraftClip } from './drafts';
 
 export const GEEL_LENGTHS = [15, 60, 180] as const;
@@ -53,6 +54,7 @@ export function GeelRecorder({ clips, setClips, maxSeconds, setMaxSeconds, sound
   const [countdown, setCountdown] = useState(0);
   const [liveSeconds, setLiveSeconds] = useState(0);
   const [resumeAfterFlip, setResumeAfterFlip] = useState(false);
+  const [playbackOpen, setPlaybackOpen] = useState(false);
   const startedAt = useRef(0);
   const pressedAt = useRef(0);
   const holdCandidate = useRef(false);
@@ -283,6 +285,7 @@ export function GeelRecorder({ clips, setClips, maxSeconds, setMaxSeconds, sound
       <Tool icon="speedometer-outline" label={`${speed}x`} active={speed !== 1} onPress={() => setSpeedOpen((open) => !open)} />
       <Tool icon="timer-outline" label={timer ? `${timer}s` : t('Timer')} active={timer > 0} onPress={() => setTimer(TIMERS[(TIMERS.indexOf(timer as 0 | 3 | 10) + 1) % TIMERS.length])} />
       {facing === 'back' && <Tool icon={torch ? 'flash' : 'flash-outline'} label={t('Flash')} active={torch} onPress={() => setTorch((value) => !value)} />}
+      {clips.length > 0 && <Tool icon="play-circle-outline" label={t('Play back')} onPress={() => { setSpeedOpen(false); setPlaybackOpen(true); }} />}
     </View>}
     {recording && <View style={[styles.tools, { top: insets.top + 76 }]}><Tool icon="camera-reverse-outline" label={t('Flip')} onPress={flip} /></View>}
 
@@ -316,6 +319,8 @@ export function GeelRecorder({ clips, setClips, maxSeconds, setMaxSeconds, sound
         </View>
       </View>
     </View>
+
+    {playbackOpen && clips.length > 0 && <ClipPlayback clips={clips} sound={sound} soundStartMS={soundStartMS} onClose={() => setPlaybackOpen(false)} />}
   </View>;
 }
 
