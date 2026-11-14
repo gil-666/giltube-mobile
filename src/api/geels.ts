@@ -1,3 +1,6 @@
+import * as Crypto from 'expo-crypto';
+import * as SecureStore from 'expo-secure-store';
+
 import { apiRequest } from '@/api/client';
 import type { Channel } from '@/types/api';
 
@@ -45,9 +48,29 @@ const query = (params: Record<string, string | number | undefined>) => {
   return text ? `?${text}` : '';
 };
 
+// An anonymous id for this install, so the feed can skip what it already
+// showed to guests (signed-in viewers are known by their account).
+const viewerKey = 'giltube.geels.viewer.v1';
+let viewerPromise: Promise<string> | null = null;
+export function geelViewerID() {
+  viewerPromise ??= (async () => {
+    try {
+      const saved = await SecureStore.getItemAsync(viewerKey);
+      if (saved && /^[A-Za-z0-9-]{8,64}$/.test(saved)) return saved;
+      const id = Crypto.randomUUID();
+      await SecureStore.setItemAsync(viewerKey, id);
+      return id;
+    } catch {
+      return '';
+    }
+  })();
+  return viewerPromise;
+}
+
 export const geelsAPI = {
-  feed: (options: { limit?: number; exclude?: string[]; start?: string; channel?: string; sound?: string; actor?: string } = {}) =>
+  feed: async (options: { limit?: number; exclude?: string[]; start?: string; channel?: string; sound?: string; actor?: string } = {}) =>
     apiRequest<{ items: Geel[]; has_more: boolean }>(`/geels${query({
+      viewer: await geelViewerID(),
       limit: options.limit ?? 6,
       exclude: options.exclude?.slice(-400).join(','),
       start: options.start,
@@ -58,7 +81,11 @@ export const geelsAPI = {
   get: (id: string, actor?: string) => apiRequest<Geel>(`/geels/${encodeURIComponent(id)}${query({ channel_id: actor })}`),
   react: (id: string, reaction: 'like' | 'dislike', on: boolean, actor: string) =>
     apiRequest<GeelReaction>(`/videos/${encodeURIComponent(id)}/${reaction}?channel_id=${encodeURIComponent(actor)}`, { method: on ? 'POST' : 'DELETE' }),
-  view: (id: string) => apiRequest<unknown>(`/videos/${encodeURIComponent(id)}/view`, { method: 'POST' }).catch(() => undefined),
+  /** Reports how much of a Geel was watched (0–1). */
+  view: async (id: string, ratio: number) => apiRequest<unknown>(`/geels/${encodeURIComponent(id)}/view${query({
+    viewer: await geelViewerID(),
+    ratio: Math.min(Math.max(ratio, 0), 1).toFixed(3),
+  })}`, { method: 'POST' }).catch(() => undefined),
   sounds: (q = '', limit = 30) => apiRequest<{ sounds: GeelSound[] }>(`/geels/sounds${query({ q, limit })}`),
   sound: (trackID: string) => apiRequest<{ sound: GeelSound; usable: boolean }>(`/geels/sounds/${encodeURIComponent(trackID)}`),
 };

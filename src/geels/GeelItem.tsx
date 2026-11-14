@@ -32,7 +32,7 @@ interface PlayerHandle { toggle: () => void; seekTo: (ratio: number) => void }
 
 const GeelPlayerLayer = forwardRef<PlayerHandle, {
   geel: Geel; current: boolean; suspended: boolean; muted: boolean; progress: SharedValue<number>;
-  onPlayingChange: (playing: boolean) => void; onWatched: () => void;
+  onPlayingChange: (playing: boolean) => void; onWatched: (ratio: number) => void;
 }>(function GeelPlayerLayer({ geel, current, suspended, muted, progress, onPlayingChange, onWatched }, ref) {
   const player = useVideoPlayer({ uri: resolveMediaURL(geel.hls_path) }, (instance) => {
     instance.loop = true;
@@ -42,6 +42,9 @@ const GeelPlayerLayer = forwardRef<PlayerHandle, {
   });
   const userPaused = useRef(false);
   const watched = useRef(false);
+  const watchedRatio = useRef(0);
+  const lastRatio = useRef(0);
+  const loops = useRef(0);
   const playing = useEvent(player, 'playingChange', { isPlaying: player.playing });
   const time = useEvent(player, 'timeUpdate', { currentTime: 0, bufferedPosition: 0, currentLiveTimestamp: null, currentOffsetFromLive: null });
 
@@ -50,6 +53,12 @@ const GeelPlayerLayer = forwardRef<PlayerHandle, {
   // another tab): just pause, and resume unless the viewer had paused.
   useEffect(() => {
     if (!current) {
+      // Moving on: report how much was watched, then start over next time.
+      if (watched.current) onWatched(watchedRatio.current);
+      watched.current = false;
+      watchedRatio.current = 0;
+      lastRatio.current = 0;
+      loops.current = 0;
       userPaused.current = false;
       player.pause();
       player.currentTime = 0;
@@ -58,14 +67,23 @@ const GeelPlayerLayer = forwardRef<PlayerHandle, {
     } else if (!userPaused.current) {
       player.play();
     }
-  }, [current, player, suspended]);
+  }, [current, onWatched, player, suspended]);
   useEffect(() => { onPlayingChange(playing.isPlaying); }, [onPlayingChange, playing.isPlaying]);
   useEffect(() => {
     const duration = player.duration;
-    if (duration > 0) progress.value = Math.min(time.currentTime / duration, 1);
+    if (duration > 0) {
+      const ratio = Math.min(time.currentTime / duration, 1);
+      progress.value = ratio;
+      if (current) {
+        // A wrap-around means it looped: watched through.
+        if (ratio + 0.5 < lastRatio.current) loops.current += 1;
+        lastRatio.current = ratio;
+        watchedRatio.current = loops.current > 0 ? 1 : Math.max(watchedRatio.current, ratio);
+      }
+    }
     if (current && !watched.current && time.currentTime >= 2) {
       watched.current = true;
-      onWatched();
+      onWatched(watchedRatio.current);
     }
   }, [current, onWatched, player, progress, time.currentTime]);
 
@@ -265,7 +283,7 @@ export const GeelItem = memo(function GeelItem({
   const description = (geel.description || '').trim();
   const extra = description.startsWith(geel.title) ? description.slice(geel.title.length).trim() : description;
   const cover = geel.sound?.cover_url ? resolveMediaURL(geel.sound.cover_url) : '';
-  const markWatched = useCallback(() => { void geelsAPI.view(geel.id); }, [geel.id]);
+  const markWatched = useCallback((ratio: number) => { void geelsAPI.view(geel.id, ratio); }, [geel.id]);
 
   return <View style={[s.item, { height }]}>
     <GestureDetector gesture={tapGesture}>
