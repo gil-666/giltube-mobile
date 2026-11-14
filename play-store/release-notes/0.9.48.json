@@ -1,0 +1,10 @@
+[
+ {
+  "language": "en-US",
+  "text": "Fixed: signing in to GilTube on the web with GILid no longer opens the app by mistake, shows a sign-in error, or signs you out of the app. The app also stays signed in if it starts while you're offline."
+ },
+ {
+  "language": "es-419",
+  "text": "Corregido: al iniciar sesión en GilTube web con GILid ya no se abre la app por error, no aparece un error de sesión y ya no se cierra tu sesión en la app. La app también mantiene tu sesión si se abre sin conexión."
+ }
+]

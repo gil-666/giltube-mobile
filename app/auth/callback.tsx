@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
-import { useAuth } from '@/auth/AuthProvider';
+import { hasPendingSignIn, useAuth } from '@/auth/AuthProvider';
 import { PressableScale } from '@/components/PressableScale';
 import { colors, makeStyles } from '@/theme/tokens';
 import { useI18n } from '@/i18n';
@@ -9,7 +9,7 @@ import { useI18n } from '@/i18n';
 export default function AuthCallbackScreen() {
   const styles = useStyles();
   const { t } = useI18n();
-  const { completeSignIn } = useAuth();
+  const { completeSignIn, status } = useAuth();
   const params = useLocalSearchParams<{ code?: string | string[]; state?: string | string[]; error?: string | string[] }>();
   const started = useRef(false);
   const [error, setError] = useState('');
@@ -18,21 +18,31 @@ export default function AuthCallbackScreen() {
   const providerError = Array.isArray(params.error) ? params.error[0] : params.error;
   const displayedError = providerError || (!code ? t('GILid did not return a mobile sign-in code.') : error);
 
+  const leave = () => router.replace(status === 'signedIn' || status === 'guest' ? '/(tabs)' : '/login');
+
   useEffect(() => {
-    if (started.current || providerError || !code) return;
+    if (started.current || providerError || !code || status === 'loading') return;
     started.current = true;
 
-    void completeSignIn(code, state)
-      .then(() => router.replace('/(tabs)'))
-      .catch((cause) => setError(t(cause instanceof Error ? cause.message : 'Please try again.')));
-  }, [code, completeSignIn, providerError, state, t]);
+    void (async () => {
+      // A callback this app did not start (e.g. a GILid sign-in for GilTube
+      // web that Android handed to the app) must not be redeemed here: it
+      // can't succeed, and the user's app session should stay untouched.
+      if (!(await hasPendingSignIn())) {
+        router.replace(status === 'signedIn' || status === 'guest' ? '/(tabs)' : '/login');
+        return;
+      }
+      await completeSignIn(code, state);
+      router.replace('/(tabs)');
+    })().catch((cause) => setError(t(cause instanceof Error ? cause.message : 'Please try again.')));
+  }, [code, completeSignIn, providerError, state, status, t]);
 
   return (
     <View style={styles.screen}>
       {!displayedError && <ActivityIndicator color={colors.gilid} size="large" />}
       <Text style={styles.title}>{t(displayedError ? 'Could not sign in' : 'Finishing sign-in…')}</Text>
       <Text style={[styles.body, !!displayedError && styles.error]}>{displayedError || t('Returning securely from GILid.')}</Text>
-      {!!displayedError && <PressableScale onPress={() => router.replace('/login')} style={styles.button}><Text style={styles.buttonText}>{t('Back to sign in')}</Text></PressableScale>}
+      {!!displayedError && <PressableScale onPress={leave} style={styles.button}><Text style={styles.buttonText}>{t(status === 'signedIn' ? 'Go to Home' : 'Back to sign in')}</Text></PressableScale>}
     </View>
   );
 }

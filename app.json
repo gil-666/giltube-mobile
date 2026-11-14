@@ -2,7 +2,7 @@
   "expo": {
     "name": "GilTube",
     "slug": "giltube",
-    "version": "0.9.47",
+    "version": "0.9.48",
     "scheme": "giltube",
     "icon": "./assets/images/giltube-icon-safe.png",
     "orientation": "default",
@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.gilservers.giltube",
-      "versionCode": 61,
+      "versionCode": 62,
       "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./google-services.json",
       "intentFilters": [
@@ -27,9 +27,59 @@
           "autoVerify": true,
           "data": [
             { "scheme": "http", "host": "giltube.gilservers.com" },
-            { "scheme": "https", "host": "giltube.gilservers.com" }
+            { "scheme": "https", "host": "giltube.gilservers.com" },
+            { "path": "/" },
+            { "path": "/account-settings" },
+            { "path": "/create-channel" },
+            { "path": "/dashboard" },
+            { "path": "/go-live" },
+            { "path": "/my-channels" },
+            { "path": "/playback-settings" },
+            { "path": "/search" },
+            { "path": "/settings" },
+            { "path": "/subscriptions" },
+            { "path": "/upload" },
+            { "pathPrefix": "/category/" },
+            { "pathPrefix": "/channel" },
+            { "pathPrefix": "/live" },
+            { "pathPrefix": "/movies" },
+            { "pathPrefix": "/music" },
+            { "pathPrefix": "/news/" },
+            { "pathPrefix": "/notification" },
+            { "pathPrefix": "/playlist" },
+            { "pathPrefix": "/series" },
+            { "pathPrefix": "/themes" },
+            { "pathPrefix": "/video/" },
+            { "pathPrefix": "/watch-part" },
+            { "path": "/es" },
+            { "path": "/es/" },
+            { "path": "/es/account-settings" },
+            { "path": "/es/create-channel" },
+            { "path": "/es/dashboard" },
+            { "path": "/es/go-live" },
+            { "path": "/es/my-channels" },
+            { "path": "/es/playback-settings" },
+            { "path": "/es/search" },
+            { "path": "/es/settings" },
+            { "path": "/es/subscriptions" },
+            { "path": "/es/upload" },
+            { "pathPrefix": "/es/category/" },
+            { "pathPrefix": "/es/channel" },
+            { "pathPrefix": "/es/live" },
+            { "pathPrefix": "/es/movies" },
+            { "pathPrefix": "/es/music" },
+            { "pathPrefix": "/es/news/" },
+            { "pathPrefix": "/es/notification" },
+            { "pathPrefix": "/es/playlist" },
+            { "pathPrefix": "/es/series" },
+            { "pathPrefix": "/es/themes" },
+            { "pathPrefix": "/es/video/" },
+            { "pathPrefix": "/es/watch-part" }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "adaptiveIcon": {
@@ -49,7 +99,14 @@
           "supportsPictureInPicture": true
         }
       ],
-      ["expo-notifications", { "icon": "./assets/images/giltube-icon-safe.png", "color": "#ef4444", "defaultChannel": "giltube" }]
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/giltube-icon-safe.png",
+          "color": "#ef4444",
+          "defaultChannel": "giltube"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { setAPISession } from '@/api/client';
+import { APIError, setAPISession } from '@/api/client';
 import { giltubeAPI } from '@/api/giltube';
 import { environment } from '@/config/environment';
 import type { Account, AuthSession } from '@/types/api';
@@ -28,6 +28,13 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+/** True while a GILid sign-in started by this app is waiting for its callback. */
+export async function hasPendingSignIn() {
+  return !!(await SecureStore.getItemAsync(pendingVerifierKey));
+}
+
+const isAuthRejection = (error: unknown) => error instanceof APIError && (error.status === 401 || error.status === 403);
 
 function createVerifier() {
   return `${Crypto.randomUUID().replaceAll('-', '')}${Crypto.randomUUID().replaceAll('-', '')}`;
@@ -112,15 +119,36 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
         }
         const saved = JSON.parse(raw) as AuthSession;
         setAPISession(saved.session_token);
-        const profile = await giltubeAPI.account();
-        if (active) {
-          setAccount(profile);
-          setStatus('signedIn');
+        try {
+          const profile = await giltubeAPI.account();
+          if (active) {
+            setAccount(profile);
+            setStatus('signedIn');
+          }
+        } catch (error) {
+          if (isAuthRejection(error)) throw error;
+          // Offline or the server hiccuped (e.g. a cold start from a link):
+          // keep the saved session and load the profile once it is reachable.
+          if (active) setStatus('signedIn');
+          for (let attempt = 1; active && attempt <= 5; attempt += 1) {
+            await new Promise((resolve) => setTimeout(resolve, attempt * 3_000));
+            if (!active) return;
+            try {
+              const profile = await giltubeAPI.account();
+              if (active) setAccount(profile);
+              return;
+            } catch (retryError) {
+              if (isAuthRejection(retryError)) throw retryError;
+            }
+          }
         }
       } catch {
         setAPISession(null);
         await persistSession(null);
-        if (active) setStatus('signedOut');
+        if (active) {
+          setAccount(null);
+          setStatus('signedOut');
+        }
       }
     })();
     return () => {
