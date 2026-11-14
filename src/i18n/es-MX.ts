@@ -729,4 +729,7 @@ export const esMX: Record<string, string> = {
 	,"Up to {minutes} minutes long": "Hasta {minutes} minutos de duración"
 	,"Bring a video over from YouTube": "Trae un video desde YouTube"
 	,"Already on YouTube? Import it instead": "¿Ya está en YouTube? Impórtalo"
+  ,"Restart GilTube to use the latest version.": "Reinicia GilTube para usar la versión más reciente."
+  ,"Restart": "Reiniciar"
+  ,"update": "actualización"
 };

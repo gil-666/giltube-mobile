@@ -17,3 +17,7 @@ npm-debug.log*
 !modules/*/ios/
 modules/*/android/build/
 modules/*/android/.cxx/
+
+# OTA update signing key (certs/certificate.pem is public and committed).
+keys/
+dist-ota/

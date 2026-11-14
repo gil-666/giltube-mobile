@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
+import * as Updates from 'expo-updates';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { giltubeAPI } from '@/api/giltube';
@@ -50,7 +51,7 @@ export default function ProfileScreen() {
       <Menu icon="settings-outline" label={t('App settings')} onPress={() => router.push('/settings')} />
       <PressableScale onPress={() => void signOut()} style={styles.logout}><Text style={styles.logoutText}>{t('Sign out')}</Text></PressableScale>
     </>}
-    <Text style={styles.version}>GilTube {DeviceInfo.getVersion()} ({DeviceInfo.getBuildNumber()})</Text>
+    <Text style={styles.version}>GilTube {DeviceInfo.getVersion()} ({DeviceInfo.getBuildNumber()}){!Updates.isEmbeddedLaunch && Updates.updateId ? ` · ${t('update')} ${Updates.updateId.slice(0, 8)}` : ''}</Text>
     <SwipeSheet visible={channelOpen} title={t('Switch channel')} onClose={() => setChannelOpen(false)}>{channels.map((channel) => <PressableScale key={channel.id} onPress={() => { void switchChannel(channel.id).then(() => setChannelOpen(false)).catch((error) => Alert.alert(t('Could not switch channel'), error.message)); }} style={styles.channelChoice}><Image source={resolveMediaURL(channel.avatar_url || '')} style={styles.channelAvatar} contentFit="cover" /><View style={{ flex: 1 }}><Text style={styles.channelChoiceName}>{channel.name}</Text></View>{channel.id === activeChannel?.id && <Ionicons name="checkmark-circle" color={colors.gilid} size={22} />}</PressableScale>)}</SwipeSheet>
   </ScrollView>;
 }

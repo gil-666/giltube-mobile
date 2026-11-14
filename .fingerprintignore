@@ -1,0 +1,4 @@
+# Build byproducts must not change the OTA runtime version.
+android/.kotlin/**/*
+android/**/*.log
+android/app/.cxx/**/*

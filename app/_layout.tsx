@@ -22,6 +22,7 @@ import { AppSettingsProvider } from '@/settings/AppSettingsProvider';
 import { ThemeBackdrop } from '@/theme/ThemeBackdrop';
 import { ThemeProvider, useSiteTheme } from '@/theme/ThemeProvider';
 import { colors, useThemeVersion } from '@/theme/tokens';
+import { OTAUpdateBanner } from '@/updates/OTAUpdateBanner';
 import { PlayStoreUpdatePrompt } from '@/updates/PlayStoreUpdatePrompt';
 
 const queryClient = new QueryClient({
@@ -47,6 +48,7 @@ export default function RootLayout() {
                 <PlayStoreUpdatePrompt />
                 <ThemedNavigator />
                 <StartupNewsPanel />
+                <OTAUpdateBanner />
               </MusicPlayerProvider></MusicDownloadsProvider></PlayerProvider>
             </DownloadProvider></NotificationProvider></ChannelProvider></AppSettingsProvider>
           </ThemeProvider></AuthProvider>

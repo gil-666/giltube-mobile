@@ -2,7 +2,7 @@
 
 Native iOS and Android client for GilTube, built with React Native and Expo (SDK 57, React Native 0.86, New Architecture, Expo Router with typed routes, React Compiler).
 
-Current version: `0.9.48` (Android `versionCode` 62) in `package.json`, `app.json` and `android/app/build.gradle`.
+Current version: `0.9.49` (Android `versionCode` 63) in `package.json`, `app.json` and `android/app/build.gradle`.
 
 ## Features
 
@@ -95,6 +95,35 @@ cd android
 The `release` build type is signed with an `upload` signing config that reads `android/app/giltube-upload-key.jks` and `android/app/giltube-upload-key.password`. That signing config lives in the generated `android/app/build.gradle`, so re-running `npx expo prebuild --clean` drops it and it must be re-added. Keystores and password files are gitignored and must never be committed.
 
 Bump the version in `app.json` (`expo.version` and `android.versionCode`) before a release. Frozen release snapshots (AABs, APKs, listing text, store graphics) are kept in `dist/`, which is gitignored and should not be edited.
+
+## OTA updates
+
+JavaScript and asset changes can ship without a Play release. Since 0.9.49 the app checks
+`https://giltube.gilservers.com/api/v1/mobile-updates/manifest` on every launch (and when it
+returns to the foreground after 30 minutes). It downloads updates in the background, then
+shows a "Restart" banner; an ignored update applies at the next launch. The backend serves
+updates from `<data>/mobile-updates` (`internal/api/mobile_updates.go`).
+
+```bash
+node scripts/publish-ota.mjs publish -m "What changed"   # export, sign, publish (asks first)
+node scripts/publish-ota.mjs status                      # what each runtime is serving
+node scripts/publish-ota.mjs rollback                    # re-serve the previous update
+node scripts/publish-ota.mjs rollback --embedded         # back to the Play build's own JS
+node scripts/publish-ota.mjs register-native             # after every Play release
+node scripts/verify-ota.mjs <runtimeVersion>             # check the live endpoint like the app does
+```
+
+- An update only reaches builds with the same **runtime version**, a fingerprint of `android/`,
+  native modules, `patches/`, `app.json`, `package.json` scripts and native dependencies. Any
+  change there (including bumping `version` in `app.json`) needs a Play release and then
+  `register-native`; `publish` refuses runtimes that no registered build uses. OTA updates do
+  not bump the app version.
+- Manifests are signed with `keys/private-key.pem` (gitignored, keep a backup). Apps only accept
+  updates signed by the key matching `certs/certificate.pem`. Losing the key means OTA stops
+  until a Play release ships a new certificate.
+- `android/` is not regenerated with prebuild (it has hand-made changes), so the `expo-updates`
+  entries in `AndroidManifest.xml` and `strings.xml` were added by hand. `.fingerprintignore`
+  keeps build byproducts out of the fingerprint.
 
 ## Project structure
 
