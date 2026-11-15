@@ -40,6 +40,18 @@ export interface Geel {
   channel_id: string;
   channel: Channel & { user_id: string };
   sound?: GeelSound;
+  /** A clip of another video (any aspect ratio): play and loop this range of the shared stream. */
+  clip?: GeelClipSource;
+}
+
+export interface GeelClipSource {
+  start_seconds: number;
+  end_seconds: number;
+  original_video_id: string;
+  original_video_title: string;
+  /** The clipper's channel; absent when they clipped as their personal account. */
+  clipped_by_channel_id?: string;
+  clipped_by_name: string;
 }
 
 export interface GeelReaction { likes: number; dislikes?: number; liked: boolean; disliked?: boolean }

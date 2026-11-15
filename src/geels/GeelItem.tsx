@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEvent } from 'expo';
+import { useEvent, useEventListener } from 'expo';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,7 +14,7 @@ import Animated, {
   withDelay, withRepeat, withSequence, withSpring, withTiming,
 } from 'react-native-reanimated';
 
-import { geelsAPI, type Geel } from '@/api/geels';
+import { geelsAPI, type Geel, type GeelClipSource } from '@/api/geels';
 import { giltubeAPI } from '@/api/giltube';
 import { VerifiedBadge } from '@/components/VerifiedBadge';
 import { useI18n } from '@/i18n';
@@ -33,11 +33,15 @@ interface PlayerHandle { toggle: () => void; seekTo: (ratio: number) => void }
 // most three players exist at once.
 
 const GeelPlayerLayer = forwardRef<PlayerHandle, {
-  geel: Geel; current: boolean; suspended: boolean; muted: boolean; progress: SharedValue<number>; subtitleBottomPadding: number;
+  geel: Geel; current: boolean; suspended: boolean; muted: boolean; fullFrame: boolean; progress: SharedValue<number>; subtitleBottomPadding: number;
   onPlayingChange: (state: GeelPlayState) => void; onWatched: (ratio: number) => void;
-}>(function GeelPlayerLayer({ geel, current, suspended, muted, progress, subtitleBottomPadding, onPlayingChange, onWatched }, ref) {
+}>(function GeelPlayerLayer({ geel, current, suspended, muted, fullFrame, progress, subtitleBottomPadding, onPlayingChange, onWatched }, ref) {
+  // A clip plays (and loops) only its range of the original's stream.
+  const clip = geel.clip;
+  const rangeStart = clip?.start_seconds ?? 0;
   const player = useVideoPlayer({ uri: resolveMediaURL(geel.hls_path) }, (instance) => {
-    instance.loop = true;
+    instance.loop = !clip;
+    if (clip) instance.currentTime = clip.start_seconds;
     instance.timeUpdateEventInterval = 0.25;
     instance.staysActiveInBackground = false;
     instance.showNowPlayingNotification = false;
@@ -48,9 +52,35 @@ const GeelPlayerLayer = forwardRef<PlayerHandle, {
   const lastRatio = useRef(0);
   const loops = useRef(0);
   const playing = useEvent(player, 'playingChange', { isPlaying: player.playing });
+  const rangeEnd = useCallback(() => {
+    if (!clip) return player.duration;
+    return player.duration > 0 ? Math.min(clip.end_seconds, player.duration) : clip.end_seconds;
+  }, [clip, player]);
+  // Hidden and silent until it is on a frame of the clip, so the original's
+  // opening never flashes.
+  const [positioned, setPositioned] = useState(!clip);
+  useEventListener(player, 'statusChange', ({ status }) => {
+    if (clip && status === 'readyToPlay' && (player.currentTime < rangeStart - 0.5 || player.currentTime >= rangeEnd())) player.currentTime = rangeStart;
+  });
+  useEventListener(player, 'timeUpdate', ({ currentTime }) => {
+    if (!clip) return;
+    if (currentTime >= rangeEnd()) {
+      if (current) loops.current += 1;
+      player.currentTime = rangeStart;
+    } else if (currentTime < rangeStart - 0.5) {
+      player.currentTime = rangeStart;
+    } else if (!positioned) {
+      setPositioned(true);
+    }
+  });
+  useEventListener(player, 'playToEnd', () => {
+    if (!clip) return;
+    player.currentTime = rangeStart;
+    if (current && !suspended && !userPaused.current) player.play();
+  });
   const time = useEvent(player, 'timeUpdate', { currentTime: 0, bufferedPosition: 0, currentLiveTimestamp: null, currentOffsetFromLive: null });
 
-  useEffect(() => { player.muted = muted; }, [muted, player]);
+  useEffect(() => { player.muted = muted || !positioned; }, [muted, player, positioned]);
   // Scrolled away: rewind. Suspended (comments open, app in the background,
   // another tab): just pause, and resume unless the viewer had paused.
   useEffect(() => {
@@ -63,19 +93,20 @@ const GeelPlayerLayer = forwardRef<PlayerHandle, {
       loops.current = 0;
       userPaused.current = false;
       player.pause();
-      player.currentTime = 0;
+      player.currentTime = rangeStart;
     } else if (suspended) {
       player.pause();
     } else if (!userPaused.current) {
       player.play();
     }
-  }, [current, onWatched, player, suspended]);
+  }, [current, onWatched, player, rangeStart, suspended]);
   // Not playing and not paused by the viewer means it is loading or buffering.
   useEffect(() => { onPlayingChange(playing.isPlaying ? 'playing' : userPaused.current ? 'paused' : 'loading'); }, [onPlayingChange, playing.isPlaying]);
   useEffect(() => {
     const duration = player.duration;
     if (duration > 0) {
-      const ratio = Math.min(time.currentTime / duration, 1);
+      const length = Math.max(rangeEnd() - rangeStart, 0.001);
+      const ratio = Math.min(Math.max((time.currentTime - rangeStart) / length, 0), 1);
       progress.value = ratio;
       if (current) {
         // A wrap-around means it looped: watched through.
@@ -84,20 +115,20 @@ const GeelPlayerLayer = forwardRef<PlayerHandle, {
         watchedRatio.current = loops.current > 0 ? 1 : Math.max(watchedRatio.current, ratio);
       }
     }
-    if (current && !watched.current && time.currentTime >= 2) {
+    if (current && !watched.current && time.currentTime - rangeStart >= 2) {
       watched.current = true;
       onWatched(watchedRatio.current);
     }
-  }, [current, onWatched, player, progress, time.currentTime]);
+  }, [current, onWatched, player, progress, rangeEnd, rangeStart, time.currentTime]);
 
   useImperativeHandle(ref, () => ({
     toggle: () => {
       if (player.playing) { userPaused.current = true; player.pause(); onPlayingChange('paused'); } else { userPaused.current = false; player.play(); onPlayingChange('loading'); }
     },
-    seekTo: (ratio: number) => { if (player.duration > 0) player.currentTime = Math.max(0, Math.min(ratio, 1)) * player.duration; },
-  }), [onPlayingChange, player]);
+    seekTo: (ratio: number) => { if (player.duration > 0) player.currentTime = rangeStart + Math.max(0, Math.min(ratio, 1)) * Math.max(rangeEnd() - rangeStart, 0); },
+  }), [onPlayingChange, player, rangeEnd, rangeStart]);
 
-  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} fullscreenOptions={{ enable: false }} surfaceType="textureView" subtitleBottomPadding={subtitleBottomPadding} />;
+  return <VideoView player={player} style={[StyleSheet.absoluteFill, !positioned && { opacity: 0 }]} contentFit={fullFrame ? 'contain' : 'cover'} nativeControls={false} fullscreenOptions={{ enable: false }} surfaceType="textureView" subtitleBottomPadding={subtitleBottomPadding} />;
 });
 
 // ---------------------------------------------------------------------------
@@ -173,6 +204,21 @@ function DislikeButton({ disliked, count, onPress, label }: { disliked: boolean;
   </Pressable>;
 }
 
+// "Clipped by <name>" under the original creator; the name opens the clipper's channel.
+function ClippedBy({ clip }: { clip: GeelClipSource }) {
+  const s = useStylesheet();
+  const { t } = useI18n();
+  const channelID = clip.clipped_by_channel_id;
+  return <Text numberOfLines={1} style={s.clipped}>
+    {t('Clipped by')}{' '}
+    <Text
+      style={s.clippedName}
+      suppressHighlighting
+      onPress={channelID ? () => router.push({ pathname: '/channel/[id]', params: { id: channelID } }) : undefined}
+    >{clip.clipped_by_name}</Text>
+  </Text>;
+}
+
 function SoundDisc({ cover, spinning, onPress, label }: { cover: string; spinning: boolean; onPress: () => void; label: string }) {
   const rotation = useSharedValue(0);
   useEffect(() => {
@@ -206,6 +252,9 @@ export const GeelItem = memo(function GeelItem({
   const playing = playState === 'playing';
   const [bursts, setBursts] = useState<{ id: number; x: number; y: number; tilt: number }[]>([]);
   const [captionOpen, setCaptionOpen] = useState(false);
+  // Clips (any aspect ratio) crop to fill; this shows the whole frame instead.
+  const [fullFrame, setFullFrame] = useState(false);
+  const canFullFrame = !!geel.clip || geel.display_width > geel.display_height;
   const [barWidth, setBarWidth] = useState(1);
   const [reacting, setReacting] = useState(false);
 
@@ -292,8 +341,8 @@ export const GeelItem = memo(function GeelItem({
   return <View style={[s.item, { height }]}>
     <GestureDetector gesture={tapGesture}>
       <View style={StyleSheet.absoluteFill} collapsable={false}>
-        <Image source={resolveMediaURL(geel.poster_url || geel.thumbnail_url)} style={StyleSheet.absoluteFill} contentFit="cover" />
-        {nearby && <GeelPlayerLayer ref={setPlayerHandle} geel={geel} current={current} suspended={suspended} muted={muted} progress={progress} subtitleBottomPadding={Math.min(0.5, (bottomInset + 150) / Math.max(height, 1))} onPlayingChange={setPlayState} onWatched={markWatched} />}
+        <Image source={resolveMediaURL(geel.poster_url || geel.thumbnail_url)} style={StyleSheet.absoluteFill} contentFit={fullFrame ? 'contain' : 'cover'} />
+        {nearby && <GeelPlayerLayer ref={setPlayerHandle} geel={geel} current={current} suspended={suspended} muted={muted} fullFrame={fullFrame} progress={progress} subtitleBottomPadding={Math.min(0.5, (bottomInset + 150) / Math.max(height, 1))} onPlayingChange={setPlayState} onWatched={markWatched} />}
         <LinearGradient pointerEvents="none" colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.72)']} style={s.shadeBottom} />
         {current && !suspended && nearby && playState === 'paused' && <View pointerEvents="none" style={s.pausedIcon}><Ionicons name="play" size={44} color={colors.white} /></View>}
         {current && !suspended && nearby && playState === 'loading' && <Animated.View entering={FadeIn.delay(250).duration(150)} pointerEvents="none" style={s.loading}><ActivityIndicator size="large" color={colors.white} /></Animated.View>}
@@ -304,6 +353,9 @@ export const GeelItem = memo(function GeelItem({
     <Pressable accessibilityLabel={t(muted ? 'Unmute' : 'Mute')} onPress={onToggleMute} style={s.mute} hitSlop={8}>
       <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={20} color={colors.white} />
     </Pressable>
+    {canFullFrame && <Pressable accessibilityRole="button" accessibilityLabel={t(fullFrame ? 'Crop to fill' : 'Show full frame')} onPress={() => setFullFrame((value) => !value)} style={[s.mute, s.fullFrame]} hitSlop={8}>
+      <Ionicons name={fullFrame ? 'contract' : 'expand'} size={19} color={colors.white} />
+    </Pressable>}
 
     <View style={[s.rail, { bottom: bottomInset + 92 }]}>
       <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/channel/[id]', params: { id: geel.channel_id } })} style={s.railAvatarWrap}>
@@ -333,6 +385,7 @@ export const GeelItem = memo(function GeelItem({
           <Text style={[s.subscribeText, subscription.data?.subscribed && s.subscribedText]}>{t(subscription.data?.subscribed ? 'Subscribed' : 'Subscribe')}</Text>
         </Pressable>}
       </View>
+      {geel.clip && <ClippedBy clip={geel.clip} />}
       <Pressable onPress={() => setCaptionOpen((open) => !open)}>
         <Text numberOfLines={captionOpen ? 12 : 2} style={s.caption}><Text style={s.captionTitle}>{geel.title}</Text>{extra ? ` ${extra}` : ''}</Text>
       </Pressable>
@@ -374,6 +427,9 @@ const useStylesheet = makeStyles(() => ({
   railFollow: { position: 'absolute', bottom: 2, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentBright },
   info: { position: 'absolute', left: 14, right: 78, gap: 7 },
   creatorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  fullFrame: { top: 100 },
+  clipped: { color: 'rgba(255,255,255,0.78)', fontSize: 12, fontWeight: '600', marginTop: -4, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 },
+  clippedName: { color: '#fff', fontWeight: '800' },
   creator: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
   creatorName: { color: '#fff', fontSize: 16, fontWeight: '800', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3, flexShrink: 1 },
   subscribe: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 999, backgroundColor: '#fff' },
