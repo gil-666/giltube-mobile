@@ -127,6 +127,8 @@ const strings: Record<string, string> = {
   'Territories': 'Territorios',
   'Worldwide, or country codes like US, MX': 'Worldwide, o códigos de país como US, MX',
   'I confirm GilTube has the rights to distribute this release': 'Confirmo que GilTube tiene los derechos para distribuir este lanzamiento',
+  'Allow in Geels': 'Permitir en Geels',
+  'Its published tracks can be used as Geel sounds.': 'Sus pistas publicadas se pueden usar como sonidos de Geels.',
   'Artist and title are required.': 'El artista y el título son obligatorios.',
   'Delete release?': '¿Eliminar lanzamiento?',
   'Delete {title} and all of its tracks? This removes their audio files.': '¿Eliminar {title} y todas sus canciones? Esto borra sus archivos de audio.',

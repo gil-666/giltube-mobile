@@ -20,7 +20,7 @@ type Step = 'files' | 'details' | 'review';
 type QuickItem = ImportItem & { tags: ParsedAudioTags };
 type QuickForm = Omit<MusicReleaseInput, 'artist_id'> & { artist: string };
 
-const emptyForm = (): QuickForm => ({ artist: '', title: '', release_type: 'album', release_date: '', label: '', copyright_text: '', phonogram_text: '', territories: 'Worldwide', rights_confirmed: false });
+const emptyForm = (): QuickForm => ({ artist: '', title: '', release_type: 'album', release_date: '', label: '', copyright_text: '', phonogram_text: '', territories: 'Worldwide', rights_confirmed: false, allow_in_geels: true });
 
 export default function MusicQuickUploadScreen() {
   const styles = useStyles();
@@ -122,7 +122,7 @@ export default function MusicQuickUploadScreen() {
           || await musicAPI.createArtist({ name: artistName, bio: '', primary_channel_id: '', verified: false });
         const release = await musicAPI.createRelease({
           artist_id: artist.id, title: form.title.trim(), release_type: form.release_type, release_date: form.release_date.trim(), label: form.label.trim(),
-          copyright_text: form.copyright_text.trim(), phonogram_text: form.phonogram_text.trim(), territories: form.territories.trim() || 'Worldwide', rights_confirmed: form.rights_confirmed,
+          copyright_text: form.copyright_text.trim(), phonogram_text: form.phonogram_text.trim(), territories: form.territories.trim() || 'Worldwide', rights_confirmed: form.rights_confirmed, allow_in_geels: form.allow_in_geels,
         });
         targetRelease = release.id;
         setReleaseID(release.id);
@@ -228,6 +228,7 @@ export default function MusicQuickUploadScreen() {
           <AdminButton compact label={t('Remove')} onPress={() => setCover(null)} />
         </View>}
         <AdminToggle label={t('I confirm GilTube has the rights to distribute this release')} value={form.rights_confirmed} onChange={(value) => set('rights_confirmed', value)} />
+        <AdminToggle label={t('Allow in Geels')} help={t('Its published tracks can be used as Geel sounds.')} value={form.allow_in_geels} onChange={(value) => set('allow_in_geels', value)} />
       </AdminCard>
     </AdminSection>}
 

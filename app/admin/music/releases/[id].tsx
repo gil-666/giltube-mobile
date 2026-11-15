@@ -13,7 +13,7 @@ import { colors, makeStyles } from '@/theme/tokens';
 
 const emptyForm = (artistID = ''): MusicReleaseInput => ({
   artist_id: artistID, title: '', release_type: 'single', release_date: '', label: '',
-  copyright_text: '', phonogram_text: '', territories: 'Worldwide', rights_confirmed: false,
+  copyright_text: '', phonogram_text: '', territories: 'Worldwide', rights_confirmed: false, allow_in_geels: true,
 });
 
 export default function MusicReleaseScreen() {
@@ -43,6 +43,7 @@ export default function MusicReleaseScreen() {
       release_date: release.release_date?.slice(0, 10) || '', label: release.label,
       copyright_text: release.copyright_text, phonogram_text: release.phonogram_text,
       territories: release.territories || 'Worldwide', rights_confirmed: release.rights_confirmed,
+      allow_in_geels: release.allow_in_geels ?? true,
     });
   }
 
@@ -175,6 +176,7 @@ export default function MusicReleaseScreen() {
         <AdminField label={t('Phonogram line')} value={form.phonogram_text} onChangeText={(value) => set('phonogram_text', value)} placeholder="℗ 2026 Rights holder" />
         <AdminField label={t('Territories')} value={form.territories} onChangeText={(value) => set('territories', value)} placeholder={t('Worldwide, or country codes like US, MX')} />
         <AdminToggle label={t('I confirm GilTube has the rights to distribute this release')} value={form.rights_confirmed} onChange={(value) => set('rights_confirmed', value)} />
+        <AdminToggle label={t('Allow in Geels')} help={t('Its published tracks can be used as Geel sounds.')} value={form.allow_in_geels} onChange={(value) => set('allow_in_geels', value)} />
       </AdminCard>
     </AdminSection>
 

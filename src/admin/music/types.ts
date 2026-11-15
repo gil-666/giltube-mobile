@@ -32,6 +32,7 @@ export interface AdminMusicRelease {
   phonogram_text: string;
   territories: string;
   rights_confirmed: boolean;
+  allow_in_geels?: boolean;
   has_lossless_audio: boolean;
   max_audio_bit_depth: number;
   max_audio_sample_rate: number;
@@ -119,6 +120,7 @@ export interface MusicReleaseInput {
   phonogram_text: string;
   territories: string;
   rights_confirmed: boolean;
+  allow_in_geels: boolean;
 }
 
 export interface MusicTrackInput {
