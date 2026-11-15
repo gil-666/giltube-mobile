@@ -82,19 +82,29 @@ async function loadPlaylistCues(playlistURL: string) {
   return texts.flatMap(parseWebVTT);
 }
 
+/** The subtitle renditions of a master playlist. */
+export async function loadSubtitleRenditions(masterURL: string) {
+  return masterSubtitles(await fetchText(masterURL), masterURL);
+}
+
+/** Every cue of one subtitle rendition (cached per playlist). */
+export function loadRenditionCues(uri: string) {
+  let cues = cueCache.get(uri);
+  if (!cues) {
+    cues = loadPlaylistCues(uri);
+    cueCache.set(uri, cues);
+    cues.catch(() => cueCache.delete(uri));
+  }
+  return cues;
+}
+
 async function loadTrackCues(masterURL: string, track: Track) {
-  const renditions = masterSubtitles(await fetchText(masterURL), masterURL);
+  const renditions = await loadSubtitleRenditions(masterURL);
   const rendition = renditions.find((item) => item.name === track.name && item.language === track.language)
     ?? renditions.find((item) => item.name === (track.name || track.label))
     ?? renditions.find((item) => item.language === track.language);
   if (!rendition) return [];
-  let cues = cueCache.get(rendition.uri);
-  if (!cues) {
-    cues = loadPlaylistCues(rendition.uri);
-    cueCache.set(rendition.uri, cues);
-    cues.catch(() => cueCache.delete(rendition.uri));
-  }
-  return cues;
+  return loadRenditionCues(rendition.uri);
 }
 
 // Returns the lines to draw over the video at currentTime (empty when the

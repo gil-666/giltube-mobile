@@ -18,6 +18,7 @@ import { geelsAPI, type Geel, type GeelClipSource } from '@/api/geels';
 import { giltubeAPI } from '@/api/giltube';
 import { VerifiedBadge } from '@/components/VerifiedBadge';
 import { useI18n } from '@/i18n';
+import { type Cue, loadRenditionCues, loadSubtitleRenditions } from '@/player/subtitleBridge';
 import { useAppSettings } from '@/settings/AppSettingsProvider';
 import { colors, makeStyles } from '@/theme/tokens';
 import { compactNumber, resolveMediaURL } from '@/utils/media';
@@ -34,10 +35,10 @@ interface PlayerHandle { toggle: () => void; seekTo: (ratio: number) => void }
 // most three players exist at once.
 
 const GeelPlayerLayer = forwardRef<PlayerHandle, {
-  geel: Geel; current: boolean; suspended: boolean; muted: boolean; fullFrame: boolean; progress: SharedValue<number>; subtitleBottomPadding: number;
-  captions: boolean; captionLanguage: string; onCaptionsAvailable: (available: boolean) => void;
+  geel: Geel; current: boolean; suspended: boolean; muted: boolean; fullFrame: boolean; progress: SharedValue<number>;
+  cues: Cue[] | null; captionBottom: number;
   onPlayingChange: (state: GeelPlayState) => void; onWatched: (ratio: number) => void;
-}>(function GeelPlayerLayer({ geel, current, suspended, muted, fullFrame, progress, subtitleBottomPadding, captions, captionLanguage, onCaptionsAvailable, onPlayingChange, onWatched }, ref) {
+}>(function GeelPlayerLayer({ geel, current, suspended, muted, fullFrame, progress, cues, captionBottom, onPlayingChange, onWatched }, ref) {
   // A clip plays (and loops) only its range of the original's stream.
   const clip = geel.clip;
   const rangeStart = clip?.start_seconds ?? 0;
@@ -84,19 +85,9 @@ const GeelPlayerLayer = forwardRef<PlayerHandle, {
 
   useEffect(() => { player.muted = muted || !positioned; }, [muted, player, positioned]);
 
-  // Captions: the track in the app's language (else the first one), shown
-  // above the creator and caption block (subtitleBottomPadding).
-  const applyCaptions = useCallback(() => {
-    const tracks = player.availableSubtitleTracks;
-    if (!captions || !tracks.length) { player.subtitleTrack = null; return; }
-    player.subtitleTrack = tracks.find((track) => (track.language || '').toLowerCase().startsWith(captionLanguage)) || tracks[0];
-  }, [captionLanguage, captions, player]);
-  useEffect(() => { applyCaptions(); }, [applyCaptions]);
-  useEventListener(player, 'availableSubtitleTracksChange', ({ availableSubtitleTracks }) => {
-    if (current) onCaptionsAvailable(availableSubtitleTracks.length > 0);
-    applyCaptions();
-  });
-  useEffect(() => { if (current) onCaptionsAvailable(player.availableSubtitleTracks.length > 0); }, [current, onCaptionsAvailable, player]);
+  // Captions are drawn here from the WebVTT (like the web), above the creator
+  // and caption block; the native renderer stays off so lines never double.
+  useEventListener(player, 'availableSubtitleTracksChange', () => { player.subtitleTrack = null; });
   // Scrolled away: rewind. Suspended (comments open, app in the background,
   // another tab): just pause, and resume unless the viewer had paused.
   useEffect(() => {
@@ -144,7 +135,13 @@ const GeelPlayerLayer = forwardRef<PlayerHandle, {
     seekTo: (ratio: number) => { if (player.duration > 0) player.currentTime = rangeStart + Math.max(0, Math.min(ratio, 1)) * Math.max(rangeEnd() - rangeStart, 0); },
   }), [onPlayingChange, player, rangeEnd, rangeStart]);
 
-  return <VideoView player={player} style={[StyleSheet.absoluteFill, !positioned && { opacity: 0 }]} contentFit={fullFrame ? 'contain' : 'cover'} nativeControls={false} fullscreenOptions={{ enable: false }} surfaceType="textureView" subtitleBottomPadding={subtitleBottomPadding} />;
+  const at = time.currentTime;
+  const line = cues && positioned ? cues.filter((cue) => cue.start <= at && at < cue.end).map((cue) => cue.text).join('\n') : '';
+
+  return <>
+    <VideoView player={player} style={[StyleSheet.absoluteFill, !positioned && { opacity: 0 }]} contentFit={fullFrame ? 'contain' : 'cover'} nativeControls={false} fullscreenOptions={{ enable: false }} surfaceType="textureView" />
+    {current && !!line && <View pointerEvents="none" style={[styles.subtitle, { bottom: captionBottom }]}><Text style={styles.subtitleText}>{line}</Text></View>}
+  </>;
 });
 
 // ---------------------------------------------------------------------------
@@ -272,7 +269,20 @@ export const GeelItem = memo(function GeelItem({
   const [fullFrame, setFullFrame] = useState(false);
   const canFullFrame = !!geel.clip || geel.display_width > geel.display_height;
   const { settings, update: updateSettings } = useAppSettings();
-  const [hasCaptions, setHasCaptions] = useState(false);
+  // Captions in the app's language, else the first track.
+  const masterURL = resolveMediaURL(geel.hls_path);
+  const captionLanguage = locale.slice(0, 2).toLowerCase();
+  const captionCues = useQuery({
+    queryKey: ['geel-captions', masterURL, captionLanguage],
+    queryFn: async () => {
+      const renditions = await loadSubtitleRenditions(masterURL);
+      const rendition = renditions.find((item) => item.language.toLowerCase().startsWith(captionLanguage)) || renditions[0];
+      return rendition ? loadRenditionCues(rendition.uri) : [];
+    },
+    enabled: nearby && /^https?:/.test(masterURL),
+    staleTime: Infinity,
+  });
+  const hasCaptions = (captionCues.data?.length ?? 0) > 0;
   const [barWidth, setBarWidth] = useState(1);
   const [reacting, setReacting] = useState(false);
 
@@ -360,7 +370,7 @@ export const GeelItem = memo(function GeelItem({
     <GestureDetector gesture={tapGesture}>
       <View style={StyleSheet.absoluteFill} collapsable={false}>
         <Image source={resolveMediaURL(geel.poster_url || geel.thumbnail_url)} style={StyleSheet.absoluteFill} contentFit={fullFrame ? 'contain' : 'cover'} />
-        {nearby && <GeelPlayerLayer ref={setPlayerHandle} geel={geel} current={current} suspended={suspended} muted={muted} fullFrame={fullFrame} captions={settings.geelCaptions} captionLanguage={locale.slice(0, 2).toLowerCase()} onCaptionsAvailable={setHasCaptions} progress={progress} subtitleBottomPadding={Math.min(0.5, (bottomInset + 150) / Math.max(height, 1))} onPlayingChange={setPlayState} onWatched={markWatched} />}
+        {nearby && <GeelPlayerLayer ref={setPlayerHandle} geel={geel} current={current} suspended={suspended} muted={muted} fullFrame={fullFrame} cues={settings.geelCaptions && captionCues.data ? captionCues.data : null} captionBottom={bottomInset + 150} progress={progress} onPlayingChange={setPlayState} onWatched={markWatched} />}
         <LinearGradient pointerEvents="none" colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.72)']} style={s.shadeBottom} />
         {current && !suspended && nearby && playState === 'paused' && <View pointerEvents="none" style={s.pausedIcon}><Ionicons name="play" size={44} color={colors.white} /></View>}
         {current && !suspended && nearby && playState === 'loading' && <Animated.View entering={FadeIn.delay(250).duration(150)} pointerEvents="none" style={s.loading}><ActivityIndicator size="large" color={colors.white} /></Animated.View>}
@@ -425,6 +435,8 @@ export const GeelItem = memo(function GeelItem({
 });
 
 const styles = StyleSheet.create({
+  subtitle: { position: 'absolute', left: 24, right: 72, alignItems: 'center' },
+  subtitleText: { color: '#fff', fontSize: 16, lineHeight: 22, fontWeight: '600', textAlign: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.6)' },
   burst: { position: 'absolute', width: 0, height: 0, alignItems: 'center', justifyContent: 'center' },
   burstHeart: { marginLeft: -52, marginTop: -52, textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 14, textShadowOffset: { width: 0, height: 4 } },
   action: { alignItems: 'center', gap: 2 },

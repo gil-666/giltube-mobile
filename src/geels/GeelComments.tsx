@@ -58,10 +58,19 @@ export function GeelComments({ geel, actorID, signedIn, onClose, onCommented }: 
     } catch { /* ignore */ }
   };
 
+  // The sheet sits over the feed, so close it before showing the channel.
+  const openChannel = (comment: Comment) => {
+    if (!comment.channel?.id) return;
+    onClose();
+    router.push({ pathname: '/channel/[id]', params: { id: comment.channel.id } });
+  };
+
   const row = (comment: Comment, reply = false) => <View key={comment.id} style={[styles.comment, reply && styles.reply]}>
-    <Image source={resolveMediaURL(comment.channel.avatar_url || '')} style={reply ? styles.replyAvatar : styles.avatar} contentFit="cover" />
+    <Pressable accessibilityRole="link" accessibilityLabel={comment.channel.name} onPress={() => openChannel(comment)} hitSlop={4}>
+      <Image source={resolveMediaURL(comment.channel.avatar_url || '')} style={reply ? styles.replyAvatar : styles.avatar} contentFit="cover" />
+    </Pressable>
     <View style={styles.body}>
-      <Text style={styles.author}>{comment.channel.name}</Text>
+      <Pressable onPress={() => openChannel(comment)} hitSlop={4} style={styles.authorLink}><Text style={styles.author}>{comment.channel.name}</Text></Pressable>
       <CommentBody text={comment.text} />
       {!reply && <Pressable onPress={() => setReplyTo(replyTo?.id === comment.id ? null : comment)} hitSlop={6}><Text style={styles.replyAction}>{t(replyTo?.id === comment.id ? 'Cancel' : 'Reply')}</Text></Pressable>}
       {comment.replies?.map((child) => row(child, true))}
@@ -124,6 +133,7 @@ const useStyles = makeStyles(() => ({
   avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surfaceStrong },
   replyAvatar: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surfaceStrong },
   body: { flex: 1, minWidth: 0 },
+  authorLink: { alignSelf: 'flex-start' },
   author: { color: colors.textMuted, fontSize: 12, fontWeight: '800' },
   text: { color: colors.text, fontSize: 14, lineHeight: 19, marginTop: 2 },
   gif: { width: 200, height: 140, borderRadius: 10, marginTop: 6, backgroundColor: colors.surfaceStrong },
