@@ -50,6 +50,7 @@ export interface AdminMusicTrack {
   primary_artist_id: string;
   artist_name: string;
   artist_slug: string;
+  featured_artists?: string[];
   title: string;
   slug: string;
   disc_number: number;
@@ -132,6 +133,8 @@ export interface MusicTrackInput {
   isrc: string;
   explicit: boolean;
   language: string;
+  /** Omit to keep the stored credits (or, on create, read them from the master's tags). */
+  featured_artists?: string[];
 }
 
 /** A picked local file (document picker asset or a staged cache file). */

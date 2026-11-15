@@ -3,6 +3,11 @@ import type { MusicRelease, MusicTrack } from '@/types/api';
 
 type T = (source: string, values?: Record<string, string | number>) => string;
 
+/** "Release artist, Featured A, Featured B" */
+export function trackArtistCredit(track: Pick<MusicTrack, 'artist_name' | 'featured_artists'>) {
+  return [track.artist_name, ...(track.featured_artists || [])].filter(Boolean).join(', ');
+}
+
 /** "3:07" */
 export function formatDuration(seconds: number) {
   const total = Math.max(0, Math.round(Number(seconds || 0)));

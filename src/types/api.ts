@@ -489,6 +489,8 @@ export interface MusicTrack {
   id: string; release_id: string; release_title: string; release_slug: string;
   release_label?: string; release_copyright_text?: string; release_phonogram_text?: string; release_territories?: string;
   cover_url: string; primary_artist_id: string; artist_name: string; artist_slug: string;
+  /** Credited besides the release artist (singers, features). */
+  featured_artists?: string[];
   title: string; slug: string; disc_number: number; track_number: number; duration_seconds: number;
   isrc?: string; explicit: boolean; language?: string;
   /** Original upload (often lossless): /music-assets/tracks/<id>/master.<ext> */

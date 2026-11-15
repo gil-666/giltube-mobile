@@ -12,6 +12,7 @@ import { useMusicPlayer } from '@/music/MusicPlayerProvider';
 import { musicImage } from '@/music/quality';
 import { MINI_PLAYER_HEIGHT, useMiniPlayerLayout } from '@/player/miniPlayerLayout';
 import { colors, makeStyles, motion, radii } from '@/theme/tokens';
+import { trackArtistCredit } from '@/music/components/format';
 
 /**
  * The music bar above the tab bar: tap or swipe up opens the full player;
@@ -64,7 +65,7 @@ export function MusicMiniPlayer({ hidden }: { hidden: boolean }) {
             <Image source={musicImage(current.cover_url, 'sm')} style={styles.cover} contentFit="cover" transition={150} />
             <View style={styles.copy}>
               <Text numberOfLines={1} style={styles.title}>{current.title}</Text>
-              <Text numberOfLines={1} style={styles.artist}>{current.artist_name}</Text>
+              <Text numberOfLines={1} style={styles.artist}>{trackArtistCredit(current)}</Text>
             </View>
           </Pressable>
           <PressableScale onPress={togglePlay} style={styles.button} accessibilityRole="button" accessibilityLabel={t(playing ? 'Pause' : 'Play')}>

@@ -7,6 +7,7 @@ import { useMusicPlayer } from '@/music/MusicPlayerProvider';
 import { musicImage } from '@/music/quality';
 import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import type { MusicTrack } from '@/types/api';
+import { trackArtistCredit } from '@/music/components/format';
 
 /** Now playing + up next, with play / move / remove / clear. */
 /** Clearing empties the queue; the player screen then closes itself. */
@@ -31,7 +32,7 @@ export function QueueView({ bottomInset }: { bottomInset: number }) {
         <Image source={musicImage(track.cover_url, 'sm')} style={[styles.cover, options.dim && styles.dim]} contentFit="cover" />
         <View style={[styles.copy, options.dim && styles.dim]}>
           <Text numberOfLines={1} style={[styles.title, options.now && styles.titleNow]}>{track.title}</Text>
-          <Text numberOfLines={1} style={styles.artist}>{track.artist_name}</Text>
+          <Text numberOfLines={1} style={styles.artist}>{trackArtistCredit(track)}</Text>
         </View>
         {options.now && <Ionicons name={playing ? 'volume-high' : 'pause'} size={16} color={colors.accentBright} />}
       </Pressable>

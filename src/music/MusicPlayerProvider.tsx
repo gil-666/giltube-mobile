@@ -10,6 +10,7 @@ import { MusicMiniPlayer } from '@/music/player/MusicMiniPlayer';
 import { fileQualityFor, musicImage, musicSource, normalizeMusicQuality, type MusicFileQuality } from '@/music/quality';
 import { claimMediaFocus, currentMediaFocus, onMediaFocusChange, releaseMediaFocus } from '@/player/mediaFocus';
 import type { MusicTrack } from '@/types/api';
+import { trackArtistCredit } from '@/music/components/format';
 
 // GilTube Music playback: one audio-only expo-video player (no VideoView) with
 // background playback and the system now-playing notification. Mirrors the
@@ -229,7 +230,7 @@ export function MusicPlayerProvider({ children }: React.PropsWithChildren) {
       await replaceSource({
         uri,
         contentType: 'progressive',
-        metadata: { title: track.title, artist: track.artist_name, artwork: musicImage(track.cover_url, 'lg') || undefined },
+        metadata: { title: track.title, artist: trackArtistCredit(track), artwork: musicImage(track.cover_url, 'lg') || undefined },
       });
     } catch {
       if (operation === operationRef.current) {

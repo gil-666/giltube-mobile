@@ -19,6 +19,7 @@ import { SeekBar } from '@/music/player/SeekBar';
 import { musicImage } from '@/music/quality';
 import { openVideo } from '@/player/navigation';
 import { colors, makeStyles, motion, radii, withAlpha } from '@/theme/tokens';
+import { trackArtistCredit } from '@/music/components/format';
 
 type View3 = 'player' | 'lyrics' | 'queue';
 
@@ -168,7 +169,7 @@ function PlayingView({ bottomInset }: { bottomInset: number }) {
             </Text>
           </Pressable>
           <Pressable onPress={() => router.push(`/music/artists/${current.artist_slug}`)} accessibilityRole="link">
-            <Text numberOfLines={1} style={styles.artist}>{current.artist_name}</Text>
+            <Text numberOfLines={1} style={styles.artist}>{trackArtistCredit(current)}</Text>
           </Pressable>
           {!!current.official_video_id && (
             <Pressable onPress={() => openVideo(current.official_video_id!)} style={styles.watchVideo} accessibilityRole="button" hitSlop={6}>

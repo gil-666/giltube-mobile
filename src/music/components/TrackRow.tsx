@@ -8,7 +8,7 @@ import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import type { MusicTrack } from '@/types/api';
 
 import { ExplicitBadge, MusicCover } from './Artwork';
-import { formatDuration } from './format';
+import { formatDuration, trackArtistCredit } from './format';
 
 function Bar({ playing, delay, color }: { playing: boolean; delay: number; color: string }) {
   const height = useSharedValue(0.45);
@@ -55,7 +55,7 @@ export function TrackRow({ track, number, current = false, playing = false, down
   const { t } = useI18n();
   return <Pressable
     accessibilityRole="button"
-    accessibilityLabel={`${track.title}, ${track.artist_name}`}
+    accessibilityLabel={`${track.title}, ${trackArtistCredit(track)}`}
     onPress={onPress}
     onLongPress={onMore}
     delayLongPress={350}
@@ -74,7 +74,7 @@ export function TrackRow({ track, number, current = false, playing = false, down
         {track.explicit && <ExplicitBadge />}
         {downloaded && <Ionicons name="arrow-down-circle" size={13} color={colors.success} accessibilityLabel={t('Downloaded')} />}
         {downloading !== undefined && !downloaded && <ActivityIndicator size={11} color={colors.textMuted} />}
-        <Text numberOfLines={1} style={styles.artist}>{subtitle ?? track.artist_name}</Text>
+        <Text numberOfLines={1} style={styles.artist}>{subtitle ?? trackArtistCredit(track)}</Text>
       </View>
     </View>
     <Text style={styles.duration}>{formatDuration(track.duration_seconds)}</Text>

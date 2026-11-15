@@ -32,11 +32,14 @@ export default function MusicTrackScreen() {
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState('');
   const [showLyrics, setShowLyrics] = useState(false);
+  // Featured artists as typed ("A, B"); split into a list on save.
+  const [featuredText, setFeaturedText] = useState('');
 
   // Load the track into the form once it arrives (render-time sync, no effect).
   if (track && loadedID !== track.id) {
     setLoadedID(track.id);
     setForm({ release_id: track.release_id, title: track.title, disc_number: track.disc_number, track_number: track.track_number, duration_seconds: track.duration_seconds, isrc: track.isrc, explicit: track.explicit, language: track.language });
+    setFeaturedText((track.featured_artists || []).join(', '));
     setVideo(track.official_video_id ? { id: track.official_video_id, title: track.official_video_title || track.official_video_id, thumbnail: track.official_video_thumbnail } : null);
   }
   // New tracks start on the requested (or first) release, after its last track.
@@ -79,7 +82,9 @@ export default function MusicTrackScreen() {
     setNotice('');
     setProgress(0);
     try {
-      const input = { ...form, title: form.title.trim(), isrc: form.isrc.trim(), language: form.language.trim(), disc_number: Math.max(1, form.disc_number || 1), track_number: Math.max(1, form.track_number || 1) };
+      const featured = featuredText.split(/[,;]/).map((name) => name.trim()).filter(Boolean);
+      // A new track without typed credits gets them from its master's tags.
+      const input = { ...form, featured_artists: !isNew || featured.length ? featured : undefined, title: form.title.trim(), isrc: form.isrc.trim(), language: form.language.trim(), disc_number: Math.max(1, form.disc_number || 1), track_number: Math.max(1, form.track_number || 1) };
       const saved = isNew ? await musicAPI.createTrack(input) : await musicAPI.updateTrack(id, input);
       if (audio) {
         await musicAPI.uploadTrackAudio(saved.id, audio, setProgress);
@@ -146,6 +151,7 @@ export default function MusicTrackScreen() {
           <View style={styles.half}><AdminNumberField label={t('Track number')} value={form.track_number} onChange={(value) => set('track_number', value)} /></View>
         </View>
         <AdminField label="ISRC" value={form.isrc} onChangeText={(value) => set('isrc', value.toUpperCase())} autoCapitalize="characters" placeholder="USXXX2600001" />
+        <AdminField label={t('Featured artists')} value={featuredText} onChangeText={setFeaturedText} autoCapitalize="words" placeholder="Azumi Takahashi, Lotus Juice" help={t('Credited besides the release artist. Read from the audio file’s tags when left empty; lyrics sync also searches these names.')} />
         <AdminField label={t('Language')} value={form.language} onChangeText={(value) => set('language', value)} autoCapitalize="none" placeholder={t('e.g. en, es')} />
         <AdminToggle label={t('Explicit')} value={form.explicit} onChange={(value) => set('explicit', value)} />
         {!!track?.duration_seconds && <Text style={styles.help}>{t('Duration: {duration} (read from the audio master)', { duration: formatDuration(track.duration_seconds) })}</Text>}

@@ -128,6 +128,8 @@ const strings: Record<string, string> = {
   'Worldwide, or country codes like US, MX': 'Worldwide, o códigos de país como US, MX',
   'I confirm GilTube has the rights to distribute this release': 'Confirmo que GilTube tiene los derechos para distribuir este lanzamiento',
   'Allow in Geels': 'Permitir en Geels',
+  'Featured artists': 'Artistas invitados',
+  'Credited besides the release artist. Read from the audio file’s tags when left empty; lyrics sync also searches these names.': 'Se acreditan además del artista del lanzamiento. Si se deja vacío, se leen de las etiquetas del audio; la sincronización de letras también busca con estos nombres.',
   'Its published tracks can be used as Geel sounds.': 'Sus pistas publicadas se pueden usar como sonidos de Geels.',
   'Artist and title are required.': 'El artista y el título son obligatorios.',
   'Delete release?': '¿Eliminar lanzamiento?',

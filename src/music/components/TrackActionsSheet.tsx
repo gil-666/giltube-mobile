@@ -13,6 +13,7 @@ import type { MusicTrack } from '@/types/api';
 
 import { MusicCover } from './Artwork';
 import { notify } from './hooks';
+import { trackArtistCredit } from '@/music/components/format';
 
 type Destination = 'track' | 'release' | 'artist';
 
@@ -37,7 +38,7 @@ export function TrackActionsSheet({ track, onClose, hide = [] }: { track: MusicT
         <MusicCover url={track.cover_url} size="sm" style={styles.cover} />
         <View style={styles.headerCopy}>
           <Text numberOfLines={2} style={styles.title}>{track.title}</Text>
-          <Text numberOfLines={1} style={styles.subtitle}>{track.artist_name} · {track.release_title}</Text>
+          <Text numberOfLines={1} style={styles.subtitle}>{trackArtistCredit(track)} · {track.release_title}</Text>
         </View>
       </View>
       <Action icon="return-down-forward-outline" label={t('Play next')} onPress={run(() => { playNext(track); notify(t('{title} will play next.', { title: track.title })); })} />

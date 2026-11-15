@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
 import { MusicCover, QualityChip } from '@/music/components/Artwork';
-import { fileQualityLabel, formatBytes, trackCountLabel } from '@/music/components/format';
+import { fileQualityLabel, formatBytes, trackCountLabel, trackArtistCredit } from '@/music/components/format';
 import { MusicQualityPicker } from '@/music/components/MusicQualityPicker';
 import { MusicBackBar } from '@/music/components/ScreenParts';
 import { TrackActionsSheet } from '@/music/components/TrackActionsSheet';
@@ -114,7 +114,7 @@ export default function MusicDownloadsScreen() {
             current={current?.id === item.track.id}
             playing={playing}
             downloaded
-            subtitle={`${item.track.artist_name} · ${formatBytes(item.bytes)}`}
+            subtitle={`${trackArtistCredit(item.track)} · ${formatBytes(item.bytes)}`}
             onPress={() => playQueue(tracks, index)}
             onMore={() => setSheetTrack(item.track)}
           />)}

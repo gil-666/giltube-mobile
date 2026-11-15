@@ -11,7 +11,7 @@ import { musicAPI } from '@/api/music';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n';
 import { ArtistAvatar, LosslessBadge, MusicCover } from '@/music/components/Artwork';
-import { formatLongDuration, isLosslessRelease, losslessSpecs, progressFraction, releaseTypeLabel, releaseYear, trackCountLabel } from '@/music/components/format';
+import { formatLongDuration, isLosslessRelease, losslessSpecs, progressFraction, releaseTypeLabel, releaseYear, trackArtistCredit, trackCountLabel } from '@/music/components/format';
 import { musicKeys } from '@/music/components/hooks';
 import { MusicBackBar, MusicState } from '@/music/components/ScreenParts';
 import { TrackActionsSheet } from '@/music/components/TrackActionsSheet';
@@ -41,6 +41,8 @@ export default function ReleaseScreen() {
   }
 
   const { release: info, tracks } = release.data;
+  // Disc headers only when the release spans more than one disc.
+  const multiDisc = new Set(tracks.map((track) => track.disc_number || 1)).size > 1;
   const playTrack = (index: number) => {
     if (current?.id === tracks[index]?.id) togglePlay();
     else playQueue(tracks, index);
@@ -54,17 +56,23 @@ export default function ReleaseScreen() {
       contentContainerStyle={{ paddingBottom: contentInset + 12 }}
       refreshControl={<RefreshControl refreshing={release.isRefetching} onRefresh={() => void release.refetch()} tintColor={colors.accentBright} colors={[colors.accentBright]} />}
       ListHeaderComponent={<ReleaseHeader release={info} tracks={tracks} />}
-      renderItem={({ item, index }) => <TrackRow
+      renderItem={({ item, index }) => <>
+        {multiDisc && item.disc_number !== tracks[index - 1]?.disc_number && <View style={styles.discHeader}>
+          <Ionicons name="disc-outline" size={16} color={colors.textMuted} />
+          <Text style={styles.discText}>{t('Disc {number}', { number: item.disc_number || 1 })}</Text>
+        </View>}
+        <TrackRow
         track={item}
         number={item.track_number || index + 1}
         current={current?.id === item.id}
         playing={playing}
         downloaded={!!getDownload(item.id)}
         downloading={activity[item.id] && activity[item.id]!.status !== 'failed' ? progressFraction(activity[item.id]!.progress) : undefined}
-        subtitle={item.artist_name !== info.artist_name ? item.artist_name : undefined}
+        subtitle={item.artist_name !== info.artist_name || item.featured_artists?.length ? trackArtistCredit(item) : undefined}
         onPress={() => playTrack(index)}
         onMore={() => setSheetTrack(item)}
-      />}
+      />
+      </>}
       ListEmptyComponent={<Text style={styles.noTracks}>{t('No tracks are available yet.')}</Text>}
       ListFooterComponent={<ReleaseFooter release={info} />}
     />
@@ -185,6 +193,8 @@ const useStyles = makeStyles(() => ({
   downloadedText: { color: colors.success },
   downloadFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: withAlpha(colors.success, 0.22) },
   noTracks: { color: colors.textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 30 },
+  discHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingTop: 18, paddingBottom: 6 },
+  discText: { color: colors.textMuted, fontSize: 12, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
   footer: { gap: 4, paddingHorizontal: 18, paddingTop: 22 },
   footerLine: { color: colors.textDim, fontSize: 11, lineHeight: 16 },
 }));

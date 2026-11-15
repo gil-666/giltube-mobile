@@ -33,6 +33,7 @@ export const musicEsMX: Record<string, string> = {
   'Track not found': 'No se encontró la canción',
   'Artist not found': 'No se encontró el artista',
   'No tracks are available yet.': 'Aún no hay canciones disponibles.',
+  'Disc {number}': 'Disco {number}',
   'Available in: {territories}': 'Disponible en: {territories}',
   'Download release': 'Descargar lanzamiento',
   'Downloaded. Tap to remove.': 'Descargado. Toca para eliminar.',
