@@ -19,7 +19,7 @@ export function TrailerSection({ series }: { series: AdminSeries }) {
   const [message, setMessage] = useState('');
 
   const upload = async () => {
-    const asset = await pickFile('video/*');
+    const asset = await pickFile('video/*', { readInPlace: true });
     if (!asset) return;
     setError(null); setMessage(''); setProgress(0);
     try {

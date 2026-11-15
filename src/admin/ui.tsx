@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { router } from 'expo-router';
 import type { ComponentProps, ReactNode } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
+import { ActivityIndicator, Alert, Platform, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/auth/AuthProvider';
@@ -189,8 +189,12 @@ export function alertError(t: (source: string) => string, title = 'Something wen
   return (error: unknown) => Alert.alert(t(title), error instanceof Error ? error.message : String(error));
 }
 
-export async function pickFile(type: string | string[] = '*/*') {
-  const result = await DocumentPicker.getDocumentAsync({ type, copyToCacheDirectory: true, multiple: false });
+/**
+ * `readInPlace`: for files sent with uploadFileChunks/uploadVideo, skip the
+ * picker's up-front copy on Android (the upload reads the document directly).
+ */
+export async function pickFile(type: string | string[] = '*/*', { readInPlace = false }: { readInPlace?: boolean } = {}) {
+  const result = await DocumentPicker.getDocumentAsync({ type, copyToCacheDirectory: !(readInPlace && Platform.OS === 'android'), multiple: false });
   if (result.canceled || !result.assets?.length) return null;
   return result.assets[0];
 }

@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 
 import { AdminButton, AdminButtons, AdminCard, AdminChips, AdminError, AdminField, AdminNotice, AdminNumberField, AdminProgress, AdminScreen, AdminSection, adminStyles, formatBytes } from '@/admin/ui';
 import { createIngest, createUploadedIngest, ingestKeys } from '@/admin/ingest/api';
@@ -54,7 +54,7 @@ export default function NewMediaIngestScreen() {
       const uploaded: { upload_id: string; file_name: string }[] = [];
       for (const row of files) {
         updateRow(row.key, { status: t('Uploading…'), progress: 0 });
-        const { sessionID } = await uploadFileChunks({ uri: row.uri, name: row.name, size: row.size }, (fraction) => updateRow(row.key, { progress: Math.round(fraction * 100) }));
+        const { sessionID } = await uploadFileChunks({ uri: row.uri, name: row.name, size: row.size }, (fraction) => updateRow(row.key, { progress: Math.round(fraction * 100) }), { excludeUploadIds: uploaded.map((item) => item.upload_id) });
         updateRow(row.key, { status: t('Ready'), progress: 100 });
         uploaded.push({ upload_id: sessionID, file_name: row.name });
       }
@@ -73,7 +73,7 @@ export default function NewMediaIngestScreen() {
 
   const pickFiles = async () => {
     setPickError('');
-    const result = await DocumentPicker.getDocumentAsync({ type: '*/*', multiple: true, copyToCacheDirectory: true });
+    const result = await DocumentPicker.getDocumentAsync({ type: '*/*', multiple: true, copyToCacheDirectory: Platform.OS !== 'android' });
     if (result.canceled || !result.assets?.length) return;
     const next = [...files];
     const existing = new Set(next.map((row) => row.key));

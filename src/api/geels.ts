@@ -128,7 +128,7 @@ export async function postGeel(post: GeelPost, onProgress: (fraction: number) =>
   const segments: { upload_id: string; speed: number; mirror: boolean }[] = [];
   for (const [index, clip] of post.clips.entries()) {
     const share = clip.duration / totalSeconds;
-    const { sessionID } = await uploadFileChunks({ uri: clip.uri, name: `geel-clip-${index}.mp4` }, (fraction) => onProgress(0.95 * (done + share * fraction)));
+    const { sessionID } = await uploadFileChunks({ uri: clip.uri, name: `geel-clip-${index}.mp4` }, (fraction) => onProgress(0.95 * (done + share * fraction)), { excludeUploadIds: segments.map((segment) => segment.upload_id) });
     done += share;
     segments.push({ upload_id: sessionID, speed: clip.speed, mirror: !!clip.mirror });
   }

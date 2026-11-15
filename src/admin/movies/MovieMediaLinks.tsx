@@ -26,7 +26,7 @@ function UploadCard({ kind, movie, defaultTitle, categoryID, onUploaded }: { kin
 
   const choose = async () => {
     try {
-      const picked = await pickFile('video/*');
+      const picked = await pickFile('video/*', { readInPlace: true });
       if (picked) setAsset(picked);
     } catch (error) {
       alertError(t)(error);

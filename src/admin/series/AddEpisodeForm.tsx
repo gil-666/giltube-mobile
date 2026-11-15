@@ -53,7 +53,7 @@ export function AddEpisodeForm({ series, episodes, metadataEpisodes, onDone }: {
   };
 
   const pickVideoFile = async () => {
-    const asset = await pickFile('video/*');
+    const asset = await pickFile('video/*', { readInPlace: true });
     if (!asset) return;
     setSource({ kind: 'file', asset });
     setUploadedVideoID('');
