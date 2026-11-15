@@ -543,7 +543,7 @@ export interface Promotion {
   partner_style: 'card' | 'original';
   sprite_url: string;
   effect: 'none' | 'flutter';
-  scene: 'none' | 'lighthouse';
+  scene: 'none' | 'lighthouse' | 'persona3';
   theme: { from: string; via: string; to: string; accent: string };
   translations?: Record<string, PromotionText>;
 }

@@ -12,6 +12,8 @@ import { useI18n } from '@/i18n';
 import { colors, makeStyles } from '@/theme/tokens';
 import type { Promotion } from '@/types/api';
 import { resolveMediaURL } from '@/utils/media';
+
+import { PersonaPromoBanner } from './PersonaPromoBanner';
 import { localizePromotion } from '@/utils/titleLogo';
 
 /** Same height as a catalog poster card (146x218 poster and its caption). */
@@ -175,6 +177,8 @@ export function PromoBanner({ promo }: { promo: Promotion }) {
     void giltubeAPI.promotionEvent(promo.id, 'click');
     void Linking.openURL(promo.url);
   };
+
+  if (promo.scene === 'persona3') return <PersonaPromoBanner promo={promo} width={width} height={height} />;
 
   return (
     <PressableScale onPress={open} accessibilityRole="link" accessibilityLabel={[promo.cta_label || t('Play now'), promo.title, promo.badge].filter(Boolean).join(' · ')} style={[styles.banner, { height, shadowColor: theme.accent }]}>
