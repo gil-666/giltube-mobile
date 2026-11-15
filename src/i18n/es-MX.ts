@@ -807,6 +807,7 @@ export const esMX: Record<string, string> = {
   ,"You have an unfinished Geel.": "Tienes un Geel sin terminar."
   ,"Your Geel is on its way": "Tu Geel va en camino"
   ,"Play back": "Reproducir"
+  ,"Dislike failed": "No se pudo registrar el no me gusta"
   ,"Turn captions on": "Activar subtítulos"
   ,"Turn captions off": "Desactivar subtítulos"
   ,"Clipped by": "Recortado por"

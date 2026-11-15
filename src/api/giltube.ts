@@ -195,9 +195,12 @@ export const giltubeAPI = {
   subscriptionsFeed: (actorChannelID = '') =>
     apiRequest<SubscriptionsFeedResponse>(`/subscriptions/feed?limit=20${actorChannelID ? `&subscriber_channel_id=${encodeURIComponent(actorChannelID)}` : ''}`),
   liked: (videoID: string, channelID: string) =>
-    apiRequest<{ liked: boolean }>(`/videos/${encodeURIComponent(videoID)}/liked?channel_id=${encodeURIComponent(channelID)}`),
+    apiRequest<{ liked: boolean; disliked?: boolean }>(`/videos/${encodeURIComponent(videoID)}/liked?channel_id=${encodeURIComponent(channelID)}`),
   like: (videoID: string, channelID: string) =>
     apiRequest<{ liked?: boolean; likes?: number }>(`/videos/${encodeURIComponent(videoID)}/like?channel_id=${encodeURIComponent(channelID)}`, { method: 'POST' }),
+  /** Dislike / remove the dislike; liking and disliking are exclusive. */
+  dislike: (videoID: string, channelID: string, on: boolean) =>
+    apiRequest<{ likes: number; dislikes: number; liked: boolean; disliked: boolean }>(`/videos/${encodeURIComponent(videoID)}/dislike?channel_id=${encodeURIComponent(channelID)}`, { method: on ? 'POST' : 'DELETE' }),
   unlike: (videoID: string, channelID: string) =>
     apiRequest<{ liked?: boolean; likes?: number }>(`/videos/${encodeURIComponent(videoID)}/like?channel_id=${encodeURIComponent(channelID)}`, { method: 'DELETE' }),
   comments: (videoID: string, channelID = '') =>

@@ -24,6 +24,8 @@ export interface Video {
   status: string;
   views: number;
   likes?: number;
+  /** Public dislike count. */
+  dislikes?: number;
   comments_count?: number;
   created_at: string;
   hls_path: string;

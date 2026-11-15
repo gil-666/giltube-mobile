@@ -380,7 +380,8 @@ function VideoWatchScreen() {
   const chromeMotion = useAnimatedStyle(() => ({ opacity: chromeOpacity.value }));
   const requireAccount = () => { if (!signedIn) { router.push('/login'); return false; } if (!actorID) { Alert.alert(t('Channel needed'), t('Create or select a channel on GilTube first.')); return false; } return true; };
 
-  const likeMutation = useMutation({ mutationFn: () => liked.data?.liked ? giltubeAPI.unlike(id, actorID) : giltubeAPI.like(id, actorID), onSuccess: (data) => { queryClient.setQueryData(['liked', id, actorID], { liked: data.liked ?? !liked.data?.liked }); void videoQuery.refetch(); }, onError: (error) => Alert.alert(t('Like failed'), error.message) });
+  const likeMutation = useMutation({ mutationFn: () => liked.data?.liked ? giltubeAPI.unlike(id, actorID) : giltubeAPI.like(id, actorID), onSuccess: (data) => { queryClient.setQueryData(['liked', id, actorID], { liked: data.liked ?? !liked.data?.liked, disliked: false }); void videoQuery.refetch(); }, onError: (error) => Alert.alert(t('Like failed'), error.message) });
+  const dislikeMutation = useMutation({ mutationFn: () => giltubeAPI.dislike(id, actorID, !liked.data?.disliked), onSuccess: (data) => { queryClient.setQueryData(['liked', id, actorID], { liked: data.liked, disliked: data.disliked }); void videoQuery.refetch(); }, onError: (error) => Alert.alert(t('Dislike failed'), error.message) });
   const subscriptionMutation = useMutation({ mutationFn: () => subscription.data?.subscribed ? giltubeAPI.unsubscribe(video!.channel_id, actorID) : giltubeAPI.subscribe(video!.channel_id, actorID), onSuccess: (data) => { queryClient.setQueryData(['subscription', video?.channel_id, actorID], data); void queryClient.invalidateQueries({ queryKey: ['subscriptions'] }); }, onError: (error) => Alert.alert(t('Subscription failed'), error.message) });
   const commentMutation = useMutation({ mutationFn: () => giltubeAPI.comment(id, actorID, commentText.trim()), onSuccess: () => { setCommentText(''); void comments.refetch(); }, onError: (error) => Alert.alert(t('Comment failed'), error.message) });
   const replyMutation = useMutation({ mutationFn: ({ parentID, text }: { parentID: string; text: string }) => giltubeAPI.comment(id, actorID, text, parentID), onSuccess: () => void comments.refetch(), onError: (error) => Alert.alert(t('Reply failed'), error.message) });
@@ -481,6 +482,7 @@ function VideoWatchScreen() {
         {!!video.clip?.original_video_id && <ClipSource clip={video.clip} />}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actions}>
           <Action icon={liked.data?.liked ? 'thumbs-up' : 'thumbs-up-outline'} label={compactNumber(video.likes || 0)} active={liked.data?.liked} onPress={() => requireAccount() && likeMutation.mutate()} />
+          <Action icon={liked.data?.disliked ? 'thumbs-down' : 'thumbs-down-outline'} label={video.dislikes ? compactNumber(video.dislikes) : t('Dislike')} active={liked.data?.disliked} onPress={() => requireAccount() && !dislikeMutation.isPending && dislikeMutation.mutate()} />
           <Action icon="share-social-outline" label={t('Share')} onPress={share} />
           <Action icon="ellipsis-horizontal" label={t('More')} onPress={() => setMenuOpen(true)} />
         </ScrollView>
