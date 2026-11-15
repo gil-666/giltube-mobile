@@ -11,9 +11,11 @@ export interface AppSettings {
   hdrEnabled: boolean;
   // The movie version to play when a title has one ('' = the main 16:9 version, 'imax').
   movieVersion: string;
+  // Show captions on Geels (CC button in the Geels viewer).
+  geelCaptions: boolean;
 }
 
-const defaults: AppSettings = { language: 'system', pipEnabled: true, backgroundPlayback: true, resumePlayback: true, doubleTapSeconds: 10, hdrEnabled: true, movieVersion: '' };
+const defaults: AppSettings = { language: 'system', pipEnabled: true, backgroundPlayback: true, resumePlayback: true, doubleTapSeconds: 10, hdrEnabled: true, movieVersion: '', geelCaptions: true };
 const storageKey = 'giltube.app-settings.v1';
 const Context = createContext<{ settings: AppSettings; ready: boolean; update: (values: Partial<AppSettings>) => Promise<void>; reset: () => Promise<void> } | null>(null);
 

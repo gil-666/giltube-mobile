@@ -18,6 +18,7 @@ import { geelsAPI, type Geel, type GeelClipSource } from '@/api/geels';
 import { giltubeAPI } from '@/api/giltube';
 import { VerifiedBadge } from '@/components/VerifiedBadge';
 import { useI18n } from '@/i18n';
+import { useAppSettings } from '@/settings/AppSettingsProvider';
 import { colors, makeStyles } from '@/theme/tokens';
 import { compactNumber, resolveMediaURL } from '@/utils/media';
 
@@ -34,8 +35,9 @@ interface PlayerHandle { toggle: () => void; seekTo: (ratio: number) => void }
 
 const GeelPlayerLayer = forwardRef<PlayerHandle, {
   geel: Geel; current: boolean; suspended: boolean; muted: boolean; fullFrame: boolean; progress: SharedValue<number>; subtitleBottomPadding: number;
+  captions: boolean; captionLanguage: string; onCaptionsAvailable: (available: boolean) => void;
   onPlayingChange: (state: GeelPlayState) => void; onWatched: (ratio: number) => void;
-}>(function GeelPlayerLayer({ geel, current, suspended, muted, fullFrame, progress, subtitleBottomPadding, onPlayingChange, onWatched }, ref) {
+}>(function GeelPlayerLayer({ geel, current, suspended, muted, fullFrame, progress, subtitleBottomPadding, captions, captionLanguage, onCaptionsAvailable, onPlayingChange, onWatched }, ref) {
   // A clip plays (and loops) only its range of the original's stream.
   const clip = geel.clip;
   const rangeStart = clip?.start_seconds ?? 0;
@@ -81,6 +83,20 @@ const GeelPlayerLayer = forwardRef<PlayerHandle, {
   const time = useEvent(player, 'timeUpdate', { currentTime: 0, bufferedPosition: 0, currentLiveTimestamp: null, currentOffsetFromLive: null });
 
   useEffect(() => { player.muted = muted || !positioned; }, [muted, player, positioned]);
+
+  // Captions: the track in the app's language (else the first one), shown
+  // above the creator and caption block (subtitleBottomPadding).
+  const applyCaptions = useCallback(() => {
+    const tracks = player.availableSubtitleTracks;
+    if (!captions || !tracks.length) { player.subtitleTrack = null; return; }
+    player.subtitleTrack = tracks.find((track) => (track.language || '').toLowerCase().startsWith(captionLanguage)) || tracks[0];
+  }, [captionLanguage, captions, player]);
+  useEffect(() => { applyCaptions(); }, [applyCaptions]);
+  useEventListener(player, 'availableSubtitleTracksChange', ({ availableSubtitleTracks }) => {
+    if (current) onCaptionsAvailable(availableSubtitleTracks.length > 0);
+    applyCaptions();
+  });
+  useEffect(() => { if (current) onCaptionsAvailable(player.availableSubtitleTracks.length > 0); }, [current, onCaptionsAvailable, player]);
   // Scrolled away: rewind. Suspended (comments open, app in the background,
   // another tab): just pause, and resume unless the viewer had paused.
   useEffect(() => {
@@ -243,7 +259,7 @@ export const GeelItem = memo(function GeelItem({
   onToggleMute: () => void; onOpenComments: (geel: Geel) => void; onChange: (geel: Geel) => void;
 }) {
   const s = useStylesheet();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const queryClient = useQueryClient();
   // State, not a ref: gesture callbacks read it.
   const [playerHandle, setPlayerHandle] = useState<PlayerHandle | null>(null);
@@ -255,6 +271,8 @@ export const GeelItem = memo(function GeelItem({
   // Clips (any aspect ratio) crop to fill; this shows the whole frame instead.
   const [fullFrame, setFullFrame] = useState(false);
   const canFullFrame = !!geel.clip || geel.display_width > geel.display_height;
+  const { settings, update: updateSettings } = useAppSettings();
+  const [hasCaptions, setHasCaptions] = useState(false);
   const [barWidth, setBarWidth] = useState(1);
   const [reacting, setReacting] = useState(false);
 
@@ -342,7 +360,7 @@ export const GeelItem = memo(function GeelItem({
     <GestureDetector gesture={tapGesture}>
       <View style={StyleSheet.absoluteFill} collapsable={false}>
         <Image source={resolveMediaURL(geel.poster_url || geel.thumbnail_url)} style={StyleSheet.absoluteFill} contentFit={fullFrame ? 'contain' : 'cover'} />
-        {nearby && <GeelPlayerLayer ref={setPlayerHandle} geel={geel} current={current} suspended={suspended} muted={muted} fullFrame={fullFrame} progress={progress} subtitleBottomPadding={Math.min(0.5, (bottomInset + 150) / Math.max(height, 1))} onPlayingChange={setPlayState} onWatched={markWatched} />}
+        {nearby && <GeelPlayerLayer ref={setPlayerHandle} geel={geel} current={current} suspended={suspended} muted={muted} fullFrame={fullFrame} captions={settings.geelCaptions} captionLanguage={locale.slice(0, 2).toLowerCase()} onCaptionsAvailable={setHasCaptions} progress={progress} subtitleBottomPadding={Math.min(0.5, (bottomInset + 150) / Math.max(height, 1))} onPlayingChange={setPlayState} onWatched={markWatched} />}
         <LinearGradient pointerEvents="none" colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.72)']} style={s.shadeBottom} />
         {current && !suspended && nearby && playState === 'paused' && <View pointerEvents="none" style={s.pausedIcon}><Ionicons name="play" size={44} color={colors.white} /></View>}
         {current && !suspended && nearby && playState === 'loading' && <Animated.View entering={FadeIn.delay(250).duration(150)} pointerEvents="none" style={s.loading}><ActivityIndicator size="large" color={colors.white} /></Animated.View>}
@@ -355,6 +373,9 @@ export const GeelItem = memo(function GeelItem({
     </Pressable>
     {canFullFrame && <Pressable accessibilityRole="button" accessibilityLabel={t(fullFrame ? 'Crop to fill' : 'Show full frame')} onPress={() => setFullFrame((value) => !value)} style={[s.mute, s.fullFrame]} hitSlop={8}>
       <Ionicons name={fullFrame ? 'contract' : 'expand'} size={19} color={colors.white} />
+    </Pressable>}
+    {current && hasCaptions && <Pressable accessibilityRole="button" accessibilityLabel={t(settings.geelCaptions ? 'Turn captions off' : 'Turn captions on')} accessibilityState={{ checked: settings.geelCaptions }} onPress={() => void updateSettings({ geelCaptions: !settings.geelCaptions })} style={[s.mute, { top: canFullFrame ? 146 : 100 }, settings.geelCaptions && s.ccOn]} hitSlop={8}>
+      <Text style={[s.ccText, settings.geelCaptions && s.ccTextOn]}>CC</Text>
     </Pressable>}
 
     <View style={[s.rail, { bottom: bottomInset + 92 }]}>
@@ -428,6 +449,9 @@ const useStylesheet = makeStyles(() => ({
   info: { position: 'absolute', left: 14, right: 78, gap: 7 },
   creatorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   fullFrame: { top: 100 },
+  ccOn: { backgroundColor: 'rgba(255,255,255,0.92)' },
+  ccText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+  ccTextOn: { color: '#000' },
   clipped: { color: 'rgba(255,255,255,0.78)', fontSize: 12, fontWeight: '600', marginTop: -4, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 },
   clippedName: { color: '#fff', fontWeight: '800' },
   creator: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
