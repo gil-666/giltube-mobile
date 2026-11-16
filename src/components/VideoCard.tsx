@@ -6,7 +6,7 @@ import Animated, { FadeInRight } from 'react-native-reanimated';
 
 import { PressableScale } from './PressableScale';
 import { useI18n } from '@/i18n';
-import { colors, makeStyles, radii } from '@/theme/tokens';
+import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
 import type { RelatedMedia, Video } from '@/types/api';
 import { resolveMediaURL } from '@/utils/media';
 import { openVideo } from '@/player/navigation';
@@ -15,7 +15,8 @@ export function VideoCard({ video, index = 0, progress = 0 }: { video: Video; in
   const styles = useStyles();
   const { t, compactNumber } = useI18n();
   // From a watch screen this replaces it: only one watch screen exists.
-  const open = () => openVideo(video);
+  // Geels open straight in the Geels player.
+  const open = () => video.geel ? router.push({ pathname: '/geels/[id]', params: { id: video.id } }) : openVideo(video);
   return (
     <Animated.View entering={FadeInRight.delay(Math.min(index, 6) * 55).duration(360)}>
       <PressableScale
@@ -24,7 +25,7 @@ export function VideoCard({ video, index = 0, progress = 0 }: { video: Video; in
         onPress={open}
         style={styles.card}
       >
-        <View style={styles.imageWrap}><Image source={resolveMediaURL(video.thumbnail_url)} style={styles.image} contentFit="cover" transition={180} cachePolicy="memory-disk" />{progress > 0 && <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.min(100, Math.max(0, progress))}%` }]} /></View>}</View>
+        <View style={styles.imageWrap}><Image source={resolveMediaURL(video.thumbnail_url)} style={styles.image} contentFit="cover" transition={180} cachePolicy="memory-disk" />{video.geel && <View style={styles.geelBadge}><Ionicons name="phone-portrait" size={11} color="#ffffff" /><Text style={styles.kindBadgeText}>{t('Geels')}</Text></View>}{progress > 0 && <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.min(100, Math.max(0, progress))}%` }]} /></View>}</View>
         <Text numberOfLines={2} style={styles.title}>{video.title}</Text>
         <View style={styles.metaRow}><Text numberOfLines={1} style={styles.channel}>{video.channel?.name || 'GilTube'}</Text>{video.channel?.verified && <Ionicons name="checkmark-circle" color={colors.text} size={13} />}<Text style={styles.meta}>· {compactNumber(video.views)} {t(video.views === 1 ? 'view' : 'views')}</Text></View>
       </PressableScale>
@@ -57,6 +58,7 @@ export function RelatedMediaCard({ media, index = 0 }: { media: RelatedMedia; in
 const useStyles = makeStyles(() => ({
   card: { width: 238 },
   kindBadge: { position: 'absolute', top: 8, left: 8, borderRadius: 5, backgroundColor: 'rgba(12,12,14,.82)', paddingHorizontal: 6, paddingVertical: 2 },
+  geelBadge: { position: 'absolute', top: 8, left: 8, flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 5, backgroundColor: withAlpha(colors.accentBright, 0.92), paddingHorizontal: 6, paddingVertical: 2 },
   kindBadgeText: { color: '#f2f2f4', fontSize: 11, fontWeight: '700' },
   mediaMeta: { marginTop: 4 },
   imageWrap: { width: 238, aspectRatio: 16 / 9, overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.surfaceStrong, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
