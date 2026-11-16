@@ -6,7 +6,7 @@ import Animated, { FadeInRight } from 'react-native-reanimated';
 
 import { PressableScale } from './PressableScale';
 import { useI18n } from '@/i18n';
-import { colors, makeStyles, radii, withAlpha } from '@/theme/tokens';
+import { colors, makeStyles, radii } from '@/theme/tokens';
 import type { RelatedMedia, Video } from '@/types/api';
 import { resolveMediaURL } from '@/utils/media';
 import { openVideo } from '@/player/navigation';
@@ -58,7 +58,7 @@ export function RelatedMediaCard({ media, index = 0 }: { media: RelatedMedia; in
 const useStyles = makeStyles(() => ({
   card: { width: 238 },
   kindBadge: { position: 'absolute', top: 8, left: 8, borderRadius: 5, backgroundColor: 'rgba(12,12,14,.82)', paddingHorizontal: 6, paddingVertical: 2 },
-  geelBadge: { position: 'absolute', top: 8, left: 8, flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 5, backgroundColor: withAlpha(colors.accentBright, 0.92), paddingHorizontal: 6, paddingVertical: 2 },
+  geelBadge: { position: 'absolute', top: 8, left: 8, flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 5, backgroundColor: 'rgba(12,12,14,.86)', paddingHorizontal: 6, paddingVertical: 2 },
   kindBadgeText: { color: '#f2f2f4', fontSize: 11, fontWeight: '700' },
   mediaMeta: { marginTop: 4 },
   imageWrap: { width: 238, aspectRatio: 16 / 9, overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.surfaceStrong, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
