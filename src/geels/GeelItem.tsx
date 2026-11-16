@@ -266,8 +266,11 @@ export const GeelItem = memo(function GeelItem({
   const [bursts, setBursts] = useState<{ id: number; x: number; y: number; tilt: number }[]>([]);
   const [captionOpen, setCaptionOpen] = useState(false);
   // Clips (any aspect ratio) crop to fill; this shows the whole frame instead.
-  const [fullFrame, setFullFrame] = useState(false);
-  const canFullFrame = !!geel.clip || geel.display_width > geel.display_height;
+  // Square Geels would lose almost half the picture cropped to the screen, so
+  // they start whole; landscape clips start cropped. Both can toggle.
+  const squareish = !geel.clip && geel.display_width * 5 > geel.display_height * 4;
+  const [fullFrame, setFullFrame] = useState(squareish);
+  const canFullFrame = !!geel.clip || squareish;
   const { settings, update: updateSettings } = useAppSettings();
   // Captions in the app's language, else the first track.
   const masterURL = resolveMediaURL(geel.hls_path);
